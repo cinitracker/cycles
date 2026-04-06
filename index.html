@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cycle Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#c97b84">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="CTracker">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>cycle<em>tracker</em></h1>
+    <div class="subtitle">basal body temperature & insights</div>
+  </div>
+</header>
+
+<!-- DAILY LOG SECTION -->
+<section class="card log-card">
+  <h2 class="section-title">Today's Log</h2>
+  <div class="input-grid">
+    <div class="field">
+      <label for="date">Date</label>
+      <input type="date" id="date">
+    </div>
+    <div class="field">
+      <label for="temp">Temp (°C)</label>
+      <input type="number" id="temp" step="0.01" placeholder="36.50">
+    </div>
+    <div class="field">
+      <label for="flow">Flow</label>
+      <select id="flow">
+        <option value="">None</option>
+        <option value="light">Light</option>
+        <option value="medium">Medium</option>
+        <option value="heavy">Heavy</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="cm">Cervical Mucus</label>
+      <select id="cm">
+        <option value="">None / Unchecked</option>
+        <option value="dry">Dry</option>
+        <option value="sticky">Sticky</option>
+        <option value="creamy">Creamy</option>
+        <option value="egg-white">Egg-White</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="symptoms">Symptoms</label>
+      <select id="symptoms">
+        <option value="">None</option>
+        <option value="bloating">Bloating</option>
+        <option value="headache">Headache</option>
+        <option value="migraine">Migraine</option>
+        <option value="cramps">Cramps</option>
+        <option value="spotting">Spotting</option>
+        <option value="fatigue">Fatigue</option>
+      </select>
+    </div>
+    <button class="log-btn" onclick="addDailyData()">
+      <span class="btn-icon">＋</span> Log Today
+    </button>
+  </div>
+</section>
+
+<!-- CHART -->
+<section class="card chart-card">
+  <div class="chart-legend">
+    <span class="legend-dot" style="background:#d4768a"></span>Follicular
+    <span class="legend-dot" style="background:#2ed573"></span>Fertile
+    <span class="legend-dot" style="background:#9b59b6"></span>Ovulation
+    <span class="legend-dot" style="background:#8bb6e0"></span>Luteal
+    <span class="legend-dot" style="background:#ff4757"></span>Period
+    <span class="legend-dot legend-diamond" style="background:#222"></span>Migraine
+  </div>
+  <div class="chart-wrap">
+    <canvas id="bbtChart"></canvas>
+  </div>
+</section>
+
+<!-- INSIGHTS GRID -->
+<section class="insights-grid">
+  <div class="card insight-card">
+    <h3>Phase Averages</h3>
+    <div class="avg-row">
+      <div class="avg-block">
+        <div class="avg-label">Follicular</div>
+        <div class="avg-val follicular-col" id="avg-fol">--</div>
+        <div class="avg-unit">°C</div>
+      </div>
+      <div class="avg-divider"></div>
+      <div class="avg-block">
+        <div class="avg-label">Luteal</div>
+        <div class="avg-val luteal-col" id="avg-lut">--</div>
+        <div class="avg-unit">°C</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card insight-card">
+    <h3>Ovulation</h3>
+    <div class="ov-status" id="ov-status">Processing…</div>
+    <p id="ov-prediction" class="insight-sub">Waiting for biphasic shift.</p>
+  </div>
+
+  <div class="card insight-card">
+    <h3>Cycle Forecast</h3>
+    <div class="forecast-row"><span class="fc-label">Fertile window</span><strong class="fertile-col" id="next-fertile">--</strong></div>
+    <div class="forecast-row"><span class="fc-label">Next ovulation</span><strong class="ov-col" id="next-ovulation">--</strong></div>
+    <div class="forecast-row"><span class="fc-label">Next period</span><strong class="period-col" id="next-period">Not enough data.</strong></div>
+  </div>
+
+  <div class="card insight-card">
+    <h3>Symptom Pattern</h3>
+    <p id="symptom-pattern" class="insight-sub">Log more data to see patterns.</p>
+  </div>
+</section>
+
+<!-- DATA MANAGEMENT -->
+<section class="card data-card">
+  <h2 class="section-title">Your Data</h2>
+  <div class="data-actions">
+    <button class="action-btn export-btn" onclick="exportData()">⬇ Export JSON</button>
+    <label class="action-btn import-btn">
+      ⬆ Import JSON
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </label>
+    <button class="action-btn danger-btn" onclick="clearData()">✕ Clear All</button>
+  </div>
+  <p class="data-note">All data is stored locally on your device. Export regularly to keep a backup.</p>
+</section>
+
+<footer>
+  <p>All data lives on your device. 🌸</p>
+</footer>
+
+<script type="module" src="script.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+</body>
+</html>
