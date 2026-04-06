@@ -79,8 +79,8 @@ function clearData() {
 // ── API KEY ───────────────────────────────────────────────────────────────────
 function saveApiKey() {
   const key = document.getElementById('api-key-input').value.trim();
-  if (!key.startsWith('sk-ant-')) {
-    document.getElementById('api-key-status').textContent = '✕ Key should start with sk-ant-';
+  if (!key.startsWith('sk-')) {
+    document.getElementById('api-key-status').textContent = '✕ Key should start with sk-';
     document.getElementById('api-key-status').style.color = '#e05555';
     return;
   }
