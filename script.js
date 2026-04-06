@@ -32,7 +32,6 @@ onSnapshot(entriesCol, (snapshot) => {
     calculateInsights();
     updateSymptomsChart();
   }
-  // If charts aren't ready yet, window.onload will pick up the data when it runs
 });
 
 // ── DATA ENTRY: TEMPERATURE ───────────────────────────────────────────────────
@@ -62,8 +61,11 @@ async function addTempData() {
 async function addSymptomsData() {
   const dateInput = document.getElementById('date-sx').value;
   const cmInput   = document.getElementById('cm').value;
-  const sympInput = document.getElementById('symptoms').value;
   const flowInput = document.getElementById('flow').checked;
+
+  // NEW LOGIC: Find all checked boxes, grab their values, and join with a comma
+  const checkedBoxes = document.querySelectorAll('.symptom-box:checked');
+  const sympInput = Array.from(checkedBoxes).map(box => box.value).join(', ');
 
   if (!dateInput) {
     alert('Please select a date.');
@@ -82,9 +84,10 @@ async function addSymptomsData() {
     flow: flowInput,
   });
 
+  // CLEAR THE FORM
   document.getElementById('cm').value = '';
-  document.getElementById('symptoms').value = '';
   document.getElementById('flow').checked = false;
+  document.querySelectorAll('.symptom-box').forEach(box => box.checked = false); // Uncheck all boxes
 }
 
 // ── DATA MANAGEMENT ───────────────────────────────────────────────────────────
@@ -254,8 +257,8 @@ function getChartDataStructure() {
 
   const pointColors = cycleData.map(e => {
     if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#e05555';
-    if (e.date === ctx.ovDay)      return '#9b59b6';
-    if (e.symptoms === 'migraine') return '#222';
+    if (e.date === ctx.ovDay) return '#9b59b6';
+    if (e.symptoms && e.symptoms.includes('migraine')) return '#222'; // CHANGED: Now looks inside string
     if (ovDateObj) {
       const d = new Date(e.date);
       const fertileStart = new Date(+ovDateObj - 5 * 86400000);
@@ -267,10 +270,10 @@ function getChartDataStructure() {
   });
 
   const pointRadii = cycleData.map(e =>
-    ((e.flow === true || (typeof e.flow === 'string' && e.flow)) || e.date === ctx.ovDay || e.symptoms === 'migraine' || e.cm === 'egg-white') ? 7 : 4
+    ((e.flow === true || (typeof e.flow === 'string' && e.flow)) || e.date === ctx.ovDay || (e.symptoms && e.symptoms.includes('migraine')) || e.cm === 'egg-white') ? 7 : 4 // CHANGED
   );
   const pointStyles = cycleData.map(e =>
-    e.symptoms === 'migraine' ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
+    (e.symptoms && e.symptoms.includes('migraine')) ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle' // CHANGED
   );
 
   return {
@@ -346,8 +349,13 @@ function getSymptomsChartData() {
     if (!entry.symptoms) continue;
     const phase = getPhaseForDate(entry.date, ctx);
     const phaseIdx = phases.indexOf(phase);
-    const symIdx = symptoms.indexOf(entry.symptoms);
-    if (phaseIdx >= 0 && symIdx >= 0) counts[symIdx][phaseIdx]++;
+    
+    // NEW LOGIC: Chop up the comma string into an array and count each symptom!
+    const entrySymptoms = entry.symptoms.split(', ');
+    entrySymptoms.forEach(sym => {
+        const symIdx = symptoms.indexOf(sym);
+        if (phaseIdx >= 0 && symIdx >= 0) counts[symIdx][phaseIdx]++;
+    });
   }
 
   return {
@@ -400,7 +408,8 @@ function calculateInsights() {
   document.getElementById('next-fertile').textContent   = ctx.fertileStart
     ? `${shortFmt(ctx.fertileStart)} – ${shortFmt(ctx.predictedOvulation)}` : '--';
 
-  const migraineEntries = cycleData.filter(e => e.symptoms === 'migraine');
+  // CHANGED: Now looks inside string for migraine pattern
+  const migraineEntries = cycleData.filter(e => e.symptoms && e.symptoms.includes('migraine'));
   const symptomEl = document.getElementById('symptom-pattern');
   if (symptomEl) {
     if (migraineEntries.length > 0 && ctx.lastPeriod) {

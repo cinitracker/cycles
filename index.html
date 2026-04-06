@@ -32,11 +32,11 @@
   <h2 class="section-title">Morning Temperature</h2>
   <div class="input-grid input-grid--temp">
     <div class="field">
-      <label for="date-temp">Date</label>
+      <label class="field-label" for="date-temp">Date</label>
       <input type="date" id="date-temp">
     </div>
     <div class="field">
-      <label for="temp">Temp (°C)</label>
+      <label class="field-label" for="temp">Temp (°C)</label>
       <input type="number" id="temp" step="0.01" placeholder="36.50">
     </div>
     <button class="log-btn" onclick="addTempData()">
@@ -45,16 +45,15 @@
   </div>
 </section>
 
-<!-- SYMPTOMS & MUCUS LOG -->
 <section class="card log-card">
-  <h2 class="section-title">Symptoms & Mucus</h2>
+  <h2 class="section-title">Symptoms</h2>
   <div class="input-grid input-grid--symptoms">
     <div class="field">
-      <label for="date-sx">Date</label>
+      <label class="field-label" for="date-sx">Date</label>
       <input type="date" id="date-sx">
     </div>
     <div class="field">
-      <label for="cm">Cervical Mucus</label>
+      <label class="field-label" for="cm">Cervical Mucus</label>
       <select id="cm">
         <option value="">None / Unchecked</option>
         <option value="dry">Dry</option>
@@ -64,22 +63,21 @@
       </select>
     </div>
     <div class="field">
-      <label for="symptoms">Symptoms</label>
-      <select id="symptoms">
-        <option value="">None</option>
-        <option value="migraine">Migraine</option>
-        <option value="bloating">Bloating</option>
-        <option value="breast-tenderness">Breast Tenderness</option>
-      </select>
+      <div class="checkbox-group">
+        <label class="cb-label"><input type="checkbox" value="migraine" class="symptom-box"> Migraine</label>
+        <label class="cb-label"><input type="checkbox" value="bloating" class="symptom-box"> Bloating</label>
+        <label class="cb-label"><input type="checkbox" value="breast-tenderness" class="symptom-box"> Breast Tenderness</label>
+      </div>
     </div>
+    
     <div class="field field--period">
-      <label>Period</label>
       <label class="toggle">
-        <input type="checkbox" id="flow">
+        <input type="checkbox" id="flow" value="heavy">
         <span class="toggle-slider"></span>
         <span class="toggle-label">PERIOD</span>
       </label>
     </div>
+    
     <button class="log-btn log-btn--sx" onclick="addSymptomsData()">
       <span class="btn-icon">＋</span> Log Symptoms
     </button>
@@ -140,11 +138,6 @@
     <div class="forecast-row"><span class="fc-label">Fertile window</span><strong class="fertile-col" id="next-fertile">--</strong></div>
     <div class="forecast-row"><span class="fc-label">Next ovulation</span><strong class="ov-col" id="next-ovulation">--</strong></div>
     <div class="forecast-row"><span class="fc-label">Next period</span><strong class="period-col" id="next-period">Not enough data.</strong></div>
-  </div>
-
-  <div class="card insight-card">
-    <h3>Migraine Pattern</h3>
-    <p id="symptom-pattern" class="insight-sub">Log more data to see patterns.</p>
   </div>
 </section>
 

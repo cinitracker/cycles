@@ -93,7 +93,7 @@ h1 em { font-style: italic; font-weight: 400; }
   grid-template-columns: 1fr 1fr;
 }
 
-.field label {
+.field-label {
   display: block;
   font-size: 0.72rem;
   font-weight: 500;
@@ -102,6 +102,7 @@ h1 em { font-style: italic; font-weight: 400; }
   color: var(--ink-soft);
   margin-bottom: 5px;
 }
+
 input[type="date"], input[type="number"], select {
   width: 100%;
   padding: 10px 12px;
@@ -143,6 +144,34 @@ input:focus, select:focus { outline: none; border-color: var(--rose); }
 .log-btn--sx {
   background: linear-gradient(135deg, var(--mauve), #7d3c98);
 }
+
+.checkbox-group {
+  display: flex;
+  flex-direction: row; /* Flips them horizontally */
+  flex-wrap: wrap;     /* Lets them bump to a new line on tiny phone screens */
+  gap: 16px;           /* Gives them nice breathing room */
+  margin-top: 8px;
+  background: white;
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+}
+.cb-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* Make the checkboxes bigger and match your theme color */
+.symptom-box {
+  width: 20px !important;
+  height: 20px !important;
+  accent-color: var(--rose);
+  cursor: pointer;
+}
+
 /* ── PERIOD TOGGLE ── */
 .field--period {
   grid-column: 1 / -1;
