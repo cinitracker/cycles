@@ -219,21 +219,20 @@ Write a warm, concise paragraph (3-5 sentences) as a personalised cycle note for
 - Tone: warm, knowledgeable friend, not clinical. No bullet points. No headers. Just flowing prose.`;
 
   try {
-    const res = await fetch('https://69d391d--cozy-klepon-7e03df.netlify.app/.netlify/functions/claude', {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDQnTZNaTRUoPTdcMvzsBw6oo1jyhezjYM', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: prompt }]
+        contents: [{ parts: [{ text: prompt }] }]
       })
     });
     const data = await res.json();
     noteLoading.style.display = 'none';
-    if (data.content?.[0]?.text) {
-      noteText.textContent = data.content[0].text;
+    const noteReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (noteReply) {
+      noteText.textContent = noteReply;
     } else {
-      noteText.textContent = 'Could not generate note — check your API key in the settings below.';
+      noteText.textContent = 'Could not generate note — please try again.';
     }
   } catch {
     noteLoading.style.display = 'none';
@@ -266,18 +265,19 @@ ${dataSummary}`;
   appendBubble('…', 'ai', loadingId);
 
   try {
-    const res = await fetch('https://69d391d--cozy-klepon-7e03df.netlify.app/.netlify/functions/claude', {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDQnTZNaTRUoPTdcMvzsBw6oo1jyhezjYM', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 400,
-        system: systemPrompt,
-        messages: chatHistory
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: chatHistory.map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }))
       })
     });
     const data = await res.json();
-    const reply = data.content?.[0]?.text || 'Sorry, I could not get a response.';
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not get a response.';
 
     chatHistory.push({ role: 'assistant', content: reply });
     // Keep history manageable
