@@ -150,7 +150,7 @@ function detectPeriods() {
   let inPeriod = false;
   let start = null;
   for (const e of cycleData) {
-    if (e.flow === true && !inPeriod) { inPeriod = true; start = e.date; }
+    if ((e.flow === true || (typeof e.flow === 'string' && e.flow)) && !inPeriod) { inPeriod = true; start = e.date; }
     else if (!e.flow && inPeriod) {
       periods.push({ start, end: cycleData[cycleData.indexOf(e) - 1]?.date || start });
       inPeriod = false;
@@ -233,7 +233,7 @@ function initializeChart() {
             label: ctx => {
               const e = cycleData[ctx.dataIndex];
               let parts = [`Temp: ${e.temp}°C`];
-              if (e.flow === true) parts.push('Period');
+              if (e.flow === true || (typeof e.flow === 'string' && e.flow)) parts.push('Period');
               if (e.cm)       parts.push(`CM: ${e.cm}`);
               if (e.symptoms) parts.push(`Symptoms: ${e.symptoms}`);
               return parts;
@@ -253,7 +253,7 @@ function getChartDataStructure() {
   const temps  = cycleData.map(e => e.temp);
 
   const pointColors = cycleData.map(e => {
-    if (e.flow === true)            return '#e05555';
+    if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#e05555';
     if (e.date === ctx.ovDay)      return '#9b59b6';
     if (e.symptoms === 'migraine') return '#222';
     if (ovDateObj) {
@@ -267,7 +267,7 @@ function getChartDataStructure() {
   });
 
   const pointRadii = cycleData.map(e =>
-    (e.flow === true || e.date === ctx.ovDay || e.symptoms === 'migraine' || e.cm === 'egg-white') ? 7 : 4
+    ((e.flow === true || (typeof e.flow === 'string' && e.flow)) || e.date === ctx.ovDay || e.symptoms === 'migraine' || e.cm === 'egg-white') ? 7 : 4
   );
   const pointStyles = cycleData.map(e =>
     e.symptoms === 'migraine' ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
