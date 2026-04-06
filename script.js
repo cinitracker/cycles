@@ -1,6 +1,6 @@
 // ── FIREBASE CLOUD SETUP ──────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, onSnapshot, writeBatch, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDwmyqSeMeME5JQOXtLl8-pqKRBFJkGmoU",
@@ -12,7 +12,6 @@ const firebaseConfig = {
   appId: "1:978749842347:web:851c918d1a348f2b1968ee"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const entriesCol = collection(db, 'cycle_entries');
@@ -20,48 +19,71 @@ const entriesCol = collection(db, 'cycle_entries');
 // ── STATE ────────────────────────────────────────────────────────────────────
 let cycleData = [];
 let bbtChart;
+let symptomsChart;
 
-// ── REAL-TIME CLOUD SYNC ─────────────────────────────────────────────────────
-// This listens to your cloud database. Any time data is added from your phone or laptop, it updates here!
+// ── REAL-TIME CLOUD SYNC ──────────────────────────────────────────────────────
 onSnapshot(entriesCol, (snapshot) => {
-    cycleData = [];
-    snapshot.forEach(doc => {
-        cycleData.push(doc.data());
-    });
-    cycleData.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    if (bbtChart) {
-        updateChartData();
-        calculateInsights();
-    }
+  cycleData = [];
+  snapshot.forEach(doc => cycleData.push(doc.data()));
+  cycleData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  if (bbtChart) {
+    updateChartData();
+    calculateInsights();
+    updateSymptomsChart();
+  }
 });
 
-// ── DATA ENTRY ────────────────────────────────────────────────────────────────
-async function addDailyData() {
-  const dateInput = document.getElementById('date').value;
+// ── DATA ENTRY: TEMPERATURE ───────────────────────────────────────────────────
+async function addTempData() {
+  const dateInput = document.getElementById('date-temp').value;
   const tempInput = parseFloat(document.getElementById('temp').value);
   const flowInput = document.getElementById('flow').value;
-  const cmInput   = document.getElementById('cm').value;
-  const sympInput = document.getElementById('symptoms').value;
 
   if (!dateInput || isNaN(tempInput)) {
     alert('Please enter both a date and a temperature.');
     return;
   }
 
-  // Save directly to the cloud! Using the date as the unique ID prevents duplicates.
+  // Merge with any existing entry for that date (preserves cm/symptoms logged separately)
   const entryRef = doc(db, 'cycle_entries', dateInput);
+  const existing = await getDoc(entryRef);
+  const base = existing.exists() ? existing.data() : { cm: '', symptoms: '' };
+
   await setDoc(entryRef, {
-      date: dateInput,
-      temp: tempInput,
-      flow: flowInput,
-      cm: cmInput,
-      symptoms: sympInput
+    ...base,
+    date: dateInput,
+    temp: tempInput,
+    flow: flowInput,
   });
 
-  // Reset form
   document.getElementById('temp').value = '';
   document.getElementById('flow').value = '';
+}
+
+// ── DATA ENTRY: SYMPTOMS & MUCUS ─────────────────────────────────────────────
+async function addSymptomsData() {
+  const dateInput = document.getElementById('date-sx').value;
+  const cmInput   = document.getElementById('cm').value;
+  const sympInput = document.getElementById('symptoms').value;
+
+  if (!dateInput) {
+    alert('Please select a date.');
+    return;
+  }
+
+  // Merge with any existing entry for that date (preserves temp logged separately)
+  const entryRef = doc(db, 'cycle_entries', dateInput);
+  const existing = await getDoc(entryRef);
+  const base = existing.exists() ? existing.data() : { temp: null, flow: '' };
+
+  await setDoc(entryRef, {
+    ...base,
+    date: dateInput,
+    cm: cmInput,
+    symptoms: sympInput,
+  });
+
   document.getElementById('cm').value = '';
   document.getElementById('symptoms').value = '';
 }
@@ -83,46 +105,42 @@ async function importData(event) {
     try {
       const imported = JSON.parse(e.target.result);
       if (!Array.isArray(imported)) throw new Error('Invalid format');
-      
-      // Batch upload all imported data to the cloud
       const batch = writeBatch(db);
       imported.forEach(entry => {
-          const docRef = doc(db, 'cycle_entries', entry.date);
-          batch.set(docRef, entry);
+        const docRef = doc(db, 'cycle_entries', entry.date);
+        batch.set(docRef, entry);
       });
       await batch.commit();
-      alert(`Successfully uploaded ${imported.length} entries to your cloud database!`);
-    } catch { 
-        alert('Could not read file. Make sure it is a valid JSON export.'); 
+      alert(`Successfully uploaded ${imported.length} entries to your cloud!`);
+    } catch {
+      alert('Could not read file. Make sure it is a valid JSON export.');
     }
   };
   reader.readAsText(file);
 }
 
 async function clearData() {
-  if (!confirm('Clear ALL data from your cloud? This cannot be undone. Export a backup first!')) return;
-  
-  // Fetch all documents and delete them from the cloud
+  if (!confirm('Clear ALL data from your cloud? Export a backup first!')) return;
   const snap = await getDocs(entriesCol);
   const batch = writeBatch(db);
   snap.forEach(d => batch.delete(d.ref));
   await batch.commit();
 }
 
-// Expose functions to the HTML window (required because this is now a module)
-window.addDailyData = addDailyData;
-window.exportData = exportData;
-window.importData = importData;
-window.clearData = clearData;
+window.addTempData     = addTempData;
+window.addSymptomsData = addSymptomsData;
+window.exportData      = exportData;
+window.importData      = importData;
+window.clearData       = clearData;
 
-// ── CYCLE ANALYSIS HELPERS ───────────────────────────────────────────────────
+// ── CYCLE ANALYSIS HELPERS ────────────────────────────────────────────────────
 function detectOvulation() {
   if (cycleData.length < 6) return null;
   const temps = cycleData.map(e => e.temp);
   for (let i = 6; i < temps.length; i++) {
     const baseline = temps.slice(i - 6, i).reduce((a, b) => a + b, 0) / 6;
     if (temps[i] - baseline >= 0.18 && (i + 1 >= temps.length || temps[i + 1] > baseline + 0.1)) {
-      return cycleData[i - 1].date; 
+      return cycleData[i - 1].date;
     }
   }
   return null;
@@ -134,7 +152,10 @@ function detectPeriods() {
   let start = null;
   for (const e of cycleData) {
     if (e.flow && !inPeriod) { inPeriod = true; start = e.date; }
-    else if (!e.flow && inPeriod) { periods.push({ start, end: cycleData[cycleData.indexOf(e) - 1]?.date || start }); inPeriod = false; }
+    else if (!e.flow && inPeriod) {
+      periods.push({ start, end: cycleData[cycleData.indexOf(e) - 1]?.date || start });
+      inPeriod = false;
+    }
   }
   if (inPeriod && cycleData.length > 0) periods.push({ start, end: cycleData[cycleData.length - 1].date });
   return periods;
@@ -164,7 +185,23 @@ function getCycleContext() {
   return { ovDay, periods, lastPeriod, cycleLength, lpLength, predictedPeriod, predictedOvulation, fertileStart };
 }
 
-// ── CHART ─────────────────────────────────────────────────────────────────────
+function getPhaseForDate(dateStr, ctx) {
+  const d = new Date(dateStr);
+  const ovDate = ctx.ovDay ? new Date(ctx.ovDay) : null;
+  const fertileStart = ovDate ? new Date(+ovDate - 5 * 86400000) : null;
+
+  for (const p of ctx.periods) {
+    const ps = new Date(p.start);
+    const pe = new Date(p.end);
+    if (d >= ps && d <= pe) return 'period';
+  }
+  if (ovDate && dateStr === ctx.ovDay) return 'ovulation';
+  if (ovDate && fertileStart && d >= fertileStart && d <= ovDate) return 'fertile';
+  if (ovDate && d > ovDate) return 'luteal';
+  return 'follicular';
+}
+
+// ── BBT CHART ─────────────────────────────────────────────────────────────────
 function initializeChart() {
   const ctx = document.getElementById('bbtChart').getContext('2d');
   bbtChart = new Chart(ctx, {
@@ -213,15 +250,12 @@ function getChartDataStructure() {
   const ctx = getCycleContext();
   const ovDateObj = ctx.ovDay ? new Date(ctx.ovDay) : null;
 
-  const labels = cycleData.map(e => {
-    const d = new Date(e.date);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  });
-  const temps = cycleData.map(e => e.temp);
+  const labels = cycleData.map(e => new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+  const temps  = cycleData.map(e => e.temp);
 
   const pointColors = cycleData.map(e => {
-    if (e.flow)               return '#e05555';
-    if (e.date === ctx.ovDay) return '#9b59b6';
+    if (e.flow)                    return '#e05555';
+    if (e.date === ctx.ovDay)      return '#9b59b6';
     if (e.symptoms === 'migraine') return '#222';
     if (ovDateObj) {
       const d = new Date(e.date);
@@ -263,6 +297,78 @@ function updateChartData() {
   bbtChart.update();
 }
 
+// ── SYMPTOMS CHART ────────────────────────────────────────────────────────────
+function initializeSymptomsChart() {
+  const ctx = document.getElementById('symptomsChart').getContext('2d');
+  symptomsChart = new Chart(ctx, {
+    type: 'bar',
+    data: getSymptomsChartData(),
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          title: { display: true, text: 'Cycle Phase', color: '#6b4f55', font: { family: 'DM Sans' } },
+          ticks: { color: '#6b4f55', font: { family: 'DM Sans', size: 11 } },
+          grid: { display: false }
+        },
+        y: {
+          title: { display: true, text: 'Days logged', color: '#6b4f55', font: { family: 'DM Sans' } },
+          ticks: { color: '#6b4f55', font: { family: 'DM Sans', size: 11 }, stepSize: 1 },
+          grid: { color: 'rgba(200,160,165,0.12)' },
+          beginAtZero: true
+        }
+      },
+      plugins: {
+        legend: {
+          labels: { color: '#6b4f55', font: { family: 'DM Sans', size: 11 }, boxWidth: 12 }
+        },
+        tooltip: {
+          backgroundColor: '#2c1f22',
+          titleFont: { family: 'DM Sans' },
+          bodyFont: { family: 'DM Sans' },
+        }
+      }
+    }
+  });
+}
+
+function getSymptomsChartData() {
+  const ctx = getCycleContext();
+  const phases = ['follicular', 'fertile', 'ovulation', 'luteal', 'period'];
+  const phaseLabels = ['Follicular', 'Fertile', 'Ovulation', 'Luteal', 'Period'];
+  const symptoms = ['migraine', 'bloating', 'breast-tenderness'];
+  const symptomLabels = ['Migraine', 'Bloating', 'Breast Tenderness'];
+  const colors = ['#222', '#c97b84', '#8bb6e0'];
+
+  const counts = symptoms.map(() => phases.map(() => 0));
+
+  for (const entry of cycleData) {
+    if (!entry.symptoms) continue;
+    const phase = getPhaseForDate(entry.date, ctx);
+    const phaseIdx = phases.indexOf(phase);
+    const symIdx = symptoms.indexOf(entry.symptoms);
+    if (phaseIdx >= 0 && symIdx >= 0) counts[symIdx][phaseIdx]++;
+  }
+
+  return {
+    labels: phaseLabels,
+    datasets: symptoms.map((_, i) => ({
+      label: symptomLabels[i],
+      data: counts[i],
+      backgroundColor: colors[i] + 'cc',
+      borderColor: colors[i],
+      borderWidth: 1,
+      borderRadius: 4,
+    }))
+  };
+}
+
+function updateSymptomsChart() {
+  symptomsChart.data = getSymptomsChartData();
+  symptomsChart.update();
+}
+
 // ── INSIGHTS ──────────────────────────────────────────────────────────────────
 function calculateInsights() {
   const ctx = getCycleContext();
@@ -292,28 +398,34 @@ function calculateInsights() {
   const shortFmt = d => fmt(d, { month:'short', day:'numeric' });
   document.getElementById('next-period').textContent    = fmt(ctx.predictedPeriod);
   document.getElementById('next-ovulation').textContent = fmt(ctx.predictedOvulation);
-  document.getElementById('next-fertile').textContent   = ctx.fertileStart ? `${shortFmt(ctx.fertileStart)} – ${shortFmt(ctx.predictedOvulation)}` : '--';
+  document.getElementById('next-fertile').textContent   = ctx.fertileStart
+    ? `${shortFmt(ctx.fertileStart)} – ${shortFmt(ctx.predictedOvulation)}` : '--';
 
   const migraineEntries = cycleData.filter(e => e.symptoms === 'migraine');
   const symptomEl = document.getElementById('symptom-pattern');
   if (symptomEl) {
-      if (migraineEntries.length > 0 && ctx.lastPeriod) {
-        const daysBefore = migraineEntries.map(e => {
-          return Math.round((new Date(ctx.lastPeriod.start) - new Date(e.date)) / 86400000);
-        }).filter(d => d >= 0 && d <= 5);
-        if (daysBefore.length) {
-          const avgNum = (daysBefore.reduce((a,b) => a+b,0) / daysBefore.length).toFixed(0);
-          symptomEl.innerHTML = `🧠 <strong>Menstrual migraine pattern detected.</strong> Your migraines tend to appear ~${avgNum} day${avgNum==1?'':'s'} before your period.`;
-        }
+    if (migraineEntries.length > 0 && ctx.lastPeriod) {
+      const daysBefore = migraineEntries
+        .map(e => Math.round((new Date(ctx.lastPeriod.start) - new Date(e.date)) / 86400000))
+        .filter(d => d >= 0 && d <= 5);
+      if (daysBefore.length) {
+        const avgNum = (daysBefore.reduce((a,b) => a+b,0) / daysBefore.length).toFixed(0);
+        symptomEl.innerHTML = `🧠 <strong>Pattern detected.</strong> Your migraines tend to appear ~${avgNum} day${avgNum==1?'':'s'} before your period.`;
       } else {
-        symptomEl.textContent = 'Log more days with symptoms to see patterns.';
+        symptomEl.textContent = 'Log more data to see migraine patterns.';
       }
+    } else {
+      symptomEl.textContent = 'Log more data to see migraine patterns.';
+    }
   }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 window.onload = function () {
-  document.getElementById('date').valueAsDate = new Date();
+  const today = new Date();
+  document.getElementById('date-temp').valueAsDate = today;
+  document.getElementById('date-sx').valueAsDate = today;
   initializeChart();
+  initializeSymptomsChart();
   calculateInsights();
 };

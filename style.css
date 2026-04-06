@@ -222,6 +222,31 @@ input:focus, select:focus { outline: none; border-color: var(--rose); }
 .danger-btn { border-color: #f0a0a0; color: var(--red); }
 .data-note { font-size: 0.78rem; color: #aaa; }
 
+
+/* ── SPLIT LOG GRIDS ── */
+.input-grid--temp {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.input-grid--symptoms {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+.log-btn--sx {
+  background: linear-gradient(135deg, var(--mauve), #7d3c98);
+}
+.log-btn--sx:hover { opacity: 0.9; }
+
+/* ── CHART TITLE ── */
+.chart-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.chart-wrap--symptoms {
+  height: 220px;
+}
+
 /* ── FOOTER ── */
 footer {
   text-align: center;

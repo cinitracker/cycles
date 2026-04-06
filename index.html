@@ -24,13 +24,13 @@
   </div>
 </header>
 
-<!-- DAILY LOG SECTION -->
+<!-- TEMPERATURE LOG -->
 <section class="card log-card">
-  <h2 class="section-title">Today's Log</h2>
-  <div class="input-grid">
+  <h2 class="section-title">Morning Temperature</h2>
+  <div class="input-grid input-grid--temp">
     <div class="field">
-      <label for="date">Date</label>
-      <input type="date" id="date">
+      <label for="date-temp">Date</label>
+      <input type="date" id="date-temp">
     </div>
     <div class="field">
       <label for="temp">Temp (°C)</label>
@@ -44,6 +44,20 @@
         <option value="medium">Medium</option>
         <option value="heavy">Heavy</option>
       </select>
+    </div>
+    <button class="log-btn" onclick="addTempData()">
+      <span class="btn-icon">＋</span> Log Temperature
+    </button>
+  </div>
+</section>
+
+<!-- SYMPTOMS & MUCUS LOG -->
+<section class="card log-card">
+  <h2 class="section-title">Symptoms & Mucus</h2>
+  <div class="input-grid input-grid--symptoms">
+    <div class="field">
+      <label for="date-sx">Date</label>
+      <input type="date" id="date-sx">
     </div>
     <div class="field">
       <label for="cm">Cervical Mucus</label>
@@ -59,22 +73,20 @@
       <label for="symptoms">Symptoms</label>
       <select id="symptoms">
         <option value="">None</option>
-        <option value="bloating">Bloating</option>
-        <option value="headache">Headache</option>
         <option value="migraine">Migraine</option>
-        <option value="cramps">Cramps</option>
-        <option value="spotting">Spotting</option>
-        <option value="fatigue">Fatigue</option>
+        <option value="bloating">Bloating</option>
+        <option value="breast-tenderness">Breast Tenderness</option>
       </select>
     </div>
-    <button class="log-btn" onclick="addDailyData()">
-      <span class="btn-icon">＋</span> Log Today
+    <button class="log-btn log-btn--sx" onclick="addSymptomsData()">
+      <span class="btn-icon">＋</span> Log Symptoms
     </button>
   </div>
 </section>
 
-<!-- CHART -->
+<!-- BBT CHART -->
 <section class="card chart-card">
+  <h3 class="chart-title">Basal Body Temperature</h3>
   <div class="chart-legend">
     <span class="legend-dot" style="background:#d4768a"></span>Follicular
     <span class="legend-dot" style="background:#2ed573"></span>Fertile
@@ -85,6 +97,14 @@
   </div>
   <div class="chart-wrap">
     <canvas id="bbtChart"></canvas>
+  </div>
+</section>
+
+<!-- SYMPTOMS CHART -->
+<section class="card chart-card">
+  <h3 class="chart-title">Symptoms by Cycle Phase</h3>
+  <div class="chart-wrap chart-wrap--symptoms">
+    <canvas id="symptomsChart"></canvas>
   </div>
 </section>
 
@@ -121,7 +141,7 @@
   </div>
 
   <div class="card insight-card">
-    <h3>Symptom Pattern</h3>
+    <h3>Migraine Pattern</h3>
     <p id="symptom-pattern" class="insight-sub">Log more data to see patterns.</p>
   </div>
 </section>
@@ -137,11 +157,11 @@
     </label>
     <button class="action-btn danger-btn" onclick="clearData()">✕ Clear All</button>
   </div>
-  <p class="data-note">All data is stored locally on your device. Export regularly to keep a backup.</p>
+  <p class="data-note">Data is synced to your personal cloud. Export regularly as a backup.</p>
 </section>
 
 <footer>
-  <p>All data lives on your device. 🌸</p>
+  <p>Data synced via Firebase. 🌸</p>
 </footer>
 
 <script type="module" src="script.js"></script>
