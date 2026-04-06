@@ -27,11 +27,12 @@ onSnapshot(entriesCol, (snapshot) => {
   snapshot.forEach(doc => cycleData.push(doc.data()));
   cycleData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  if (bbtChart) {
+  if (bbtChart && symptomsChart) {
     updateChartData();
     calculateInsights();
     updateSymptomsChart();
   }
+  // If charts aren't ready yet, window.onload will pick up the data when it runs
 });
 
 // ── DATA ENTRY: TEMPERATURE ───────────────────────────────────────────────────
@@ -427,5 +428,10 @@ window.onload = function () {
   document.getElementById('date-sx').valueAsDate = today;
   initializeChart();
   initializeSymptomsChart();
+  // Always refresh from whatever data has arrived by now
+  if (cycleData.length > 0) {
+    updateChartData();
+    updateSymptomsChart();
+  }
   calculateInsights();
 };

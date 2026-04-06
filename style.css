@@ -256,9 +256,18 @@ footer {
 }
 
 /* ── RESPONSIVE ── */
-@media (max-width: 500px) {
+@media (max-width: 600px) {
   .chart-wrap { height: 240px; }
+  .chart-wrap--symptoms { height: 180px; }
   .avg-val { font-size: 1.5rem; }
   .ov-status { font-size: 1.3rem; }
   .insights-grid { grid-template-columns: 1fr; }
+  .input-grid--temp,
+  .input-grid--symptoms {
+    grid-template-columns: 1fr 1fr;
+  }
+  .input-grid--temp .log-btn,
+  .input-grid--symptoms .log-btn {
+    grid-column: 1 / -1;
+  }
 }
