@@ -1,40 +1,13 @@
-// ── DEFAULT DATA (first load only) ──────────────────────────────────────────
-const DEFAULT_DATA = [
-  { date: '2026-03-12', temp: 36.27, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-13', temp: 36.59, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-14', temp: 36.06, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-15', temp: 36.34, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-16', temp: 36.44, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-17', temp: 35.85, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-18', temp: 36.50, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-19', temp: 36.34, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-20', temp: 36.45, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-21', temp: 36.70, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-22', temp: 36.65, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-23', temp: 36.70, flow: '', cm: 'creamy', symptoms: 'bloating' },
-  { date: '2026-03-24', temp: 36.80, flow: '', cm: '', symptoms: 'bloating' },
-  { date: '2026-03-26', temp: 36.40, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-27', temp: 36.68, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-28', temp: 36.60, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-29', temp: 36.96, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-30', temp: 36.85, flow: '', cm: '', symptoms: '' },
-  { date: '2026-03-31', temp: 36.97, flow: '', cm: '', symptoms: 'migraine' },
-  { date: '2026-04-01', temp: 36.57, flow: '', cm: '', symptoms: 'bloating' },
-  { date: '2026-04-02', temp: 36.39, flow: 'heavy', cm: '', symptoms: '' },
-  { date: '2026-04-03', temp: 36.45, flow: 'heavy', cm: '', symptoms: '' },
-];
-
 // ── STATE ────────────────────────────────────────────────────────────────────
 let cycleData = loadData();
 let bbtChart;
-let chatHistory = [];
 
 // ── PERSISTENCE ──────────────────────────────────────────────────────────────
 function loadData() {
   try {
     const stored = localStorage.getItem('ctracker_data');
-    return stored ? JSON.parse(stored) : [...DEFAULT_DATA];
-  } catch { return [...DEFAULT_DATA]; }
+    return stored ? JSON.parse(stored) : [];
+  } catch { return []; }
 }
 
 function saveData() {
@@ -76,11 +49,9 @@ function clearData() {
   document.getElementById('daily-note-section').style.display = 'none';
 }
 
-// ── API KEY ───────────────────────────────────────────────────────────────────
-function getApiKey() { return true; }
 
 // ── DATA ENTRY ────────────────────────────────────────────────────────────────
-async function addDailyData() {
+function addDailyData() {
   const dateInput = document.getElementById('date').value;
   const tempInput = parseFloat(document.getElementById('temp').value);
   const flowInput = document.getElementById('flow').value;
@@ -106,8 +77,6 @@ async function addDailyData() {
   updateChartData();
   calculateInsights();
 
-  // Trigger daily AI note
-  await generateDailyNote({ date: dateInput, temp: tempInput, flow: flowInput, cm: cmInput, symptoms: sympInput });
 }
 
 // ── CYCLE ANALYSIS HELPERS ───────────────────────────────────────────────────
@@ -190,115 +159,6 @@ ${recentSummary}
 Logged symptoms: ${symptomsAll || 'none'}
 
 Note: User has PCOS and is tracking cervical mucus carefully. PCOS can cause delayed or absent ovulation, variable cycle lengths, and atypical CM patterns.`;
-}
-
-// ── DAILY AI NOTE ─────────────────────────────────────────────────────────────
-async function generateDailyNote(entry) {
-  const noteSection = document.getElementById('daily-note-section');
-  const noteText    = document.getElementById('daily-note-text');
-  const noteLoading = document.getElementById('daily-note-loading');
-  const noteDate    = document.getElementById('daily-note-date');
-
-  noteSection.style.display = 'block';
-  noteText.textContent = '';
-  noteLoading.style.display = 'flex';
-  noteDate.textContent = '';
-
-  const apiKey = getApiKey();
-
-  const dataSummary = buildDataSummary();
-  const prompt = `${dataSummary}
-
-Today's new entry: ${entry.date}, temp ${entry.temp}°C${entry.flow ? ', flow: ' + entry.flow : ''}${entry.cm ? ', cervical mucus: ' + entry.cm : ''}${entry.symptoms ? ', symptoms: ' + entry.symptoms : ''}.
-
-Write a warm, concise paragraph (3-5 sentences) as a personalised cycle note for today. 
-- Comment on what phase she is likely in and what the temperature suggests
-- Mention the cervical mucus if logged (especially helpful for PCOS — be informative about what it might indicate)
-- Note any symptoms with brief context (e.g. if migraine near period, explain the hormonal drop)
-- End with something gently encouraging
-- Tone: warm, knowledgeable friend, not clinical. No bullet points. No headers. Just flowing prose.`;
-
-  try {
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDQnTZNaTRUoPTdcMvzsBw6oo1jyhezjYM', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-    const data = await res.json();
-    noteLoading.style.display = 'none';
-    const noteReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (noteReply) {
-      noteText.textContent = noteReply;
-    } else {
-      noteText.textContent = 'Could not generate note — please try again.';
-    }
-  } catch {
-    noteLoading.style.display = 'none';
-    noteText.textContent = 'Could not connect to generate a note. Check your API key and internet connection.';
-  }
-
-  noteDate.textContent = new Date().toLocaleString();
-}
-
-// ── CHAT ──────────────────────────────────────────────────────────────────────
-async function sendChat() {
-  const input = document.getElementById('chat-input');
-  const msg = input.value.trim();
-  if (!msg) return;
-
-  input.value = '';
-  appendBubble(msg, 'user');
-
-  const apiKey = getApiKey();
-
-  const dataSummary = buildDataSummary();
-  const systemPrompt = `You are a knowledgeable, warm cycle health assistant helping someone with PCOS understand their basal body temperature and cycle data. You have access to their data below. Give clear, friendly, informative answers. Never diagnose. Recommend consulting a doctor for medical concerns. Keep responses concise (under 150 words unless a detailed explanation is needed).
-
-${dataSummary}`;
-
-  chatHistory.push({ role: 'user', content: msg });
-
-  // Loading bubble
-  const loadingId = 'loading-' + Date.now();
-  appendBubble('…', 'ai', loadingId);
-
-  try {
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDQnTZNaTRUoPTdcMvzsBw6oo1jyhezjYM', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: chatHistory.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        }))
-      })
-    });
-    const data = await res.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not get a response.';
-
-    chatHistory.push({ role: 'assistant', content: reply });
-    // Keep history manageable
-    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-
-    document.getElementById(loadingId)?.remove();
-    appendBubble(reply, 'ai');
-  } catch {
-    document.getElementById(loadingId)?.remove();
-    appendBubble('Connection error — check your API key and internet.', 'error');
-  }
-}
-
-function appendBubble(text, type, id) {
-  const messages = document.getElementById('chat-messages');
-  const bubble = document.createElement('div');
-  bubble.className = `chat-bubble ${type}`;
-  bubble.textContent = text;
-  if (id) bubble.id = id;
-  messages.appendChild(bubble);
-  messages.scrollTop = messages.scrollHeight;
 }
 
 // ── CHART ─────────────────────────────────────────────────────────────────────
@@ -465,7 +325,4 @@ window.onload = function () {
   initializeChart();
   calculateInsights();
 
-  // Show saved API key indicator
-  if (getApiKey()) {
-  }
 };

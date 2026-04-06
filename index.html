@@ -73,20 +73,6 @@
   </div>
 </section>
 
-<!-- DAILY INSIGHT NOTE (AI generated on log) -->
-<section class="card daily-note-card" id="daily-note-section" style="display:none">
-  <div class="note-header">
-    <span class="note-icon">✦</span>
-    <h2 class="section-title">Today's Note</h2>
-  </div>
-  <div id="daily-note-loading" class="note-loading" style="display:none">
-    <div class="dot-pulse"><span></span><span></span><span></span></div>
-    <span>Reading your cycle…</span>
-  </div>
-  <p id="daily-note-text" class="note-text"></p>
-  <div id="daily-note-date" class="note-date"></div>
-</section>
-
 <!-- CHART -->
 <section class="card chart-card">
   <div class="chart-legend">
@@ -154,26 +140,8 @@
   <p class="data-note">All data is stored locally on your device. Export regularly to keep a backup.</p>
 </section>
 
-<!-- AI CHATBOX -->
-<section class="card chat-card">
-  <div class="chat-header">
-    <span class="note-icon">✦</span>
-    <h2 class="section-title">Ask About Your Cycle</h2>
-  </div>
-  <p class="chat-intro">Ask anything about your data — fertile window, patterns, what your mucus means with PCOS, headache timing, anything.</p>
-  
-  <div id="chat-messages" class="chat-messages"></div>
-  
-  <div class="chat-input-row">
-    <input type="text" id="chat-input" class="chat-input" placeholder="e.g. Am I in my fertile window?" onkeydown="if(event.key==='Enter') sendChat()">
-    <button class="chat-send-btn" onclick="sendChat()">Send</button>
-  </div>
-    </details>
-  </div>
-</section>
-
 <footer>
-  <p>All data lives on your device. Nothing is sent to any server except the Anthropic API when you use the chat/daily note. 🌸</p>
+  <p>All data lives on your device. 🌸</p>
 </footer>
 
 <script src="script.js"></script>
