@@ -39,27 +39,23 @@ onSnapshot(entriesCol, (snapshot) => {
 async function addTempData() {
   const dateInput = document.getElementById('date-temp').value;
   const tempInput = parseFloat(document.getElementById('temp').value);
-  const flowInput = document.getElementById('flow').value;
 
   if (!dateInput || isNaN(tempInput)) {
     alert('Please enter both a date and a temperature.');
     return;
   }
 
-  // Merge with any existing entry for that date (preserves cm/symptoms logged separately)
   const entryRef = doc(db, 'cycle_entries', dateInput);
   const existing = await getDoc(entryRef);
-  const base = existing.exists() ? existing.data() : { cm: '', symptoms: '' };
+  const base = existing.exists() ? existing.data() : { cm: '', symptoms: '', flow: false };
 
   await setDoc(entryRef, {
     ...base,
     date: dateInput,
     temp: tempInput,
-    flow: flowInput,
   });
 
   document.getElementById('temp').value = '';
-  document.getElementById('flow').value = '';
 }
 
 // ── DATA ENTRY: SYMPTOMS & MUCUS ─────────────────────────────────────────────
@@ -67,26 +63,28 @@ async function addSymptomsData() {
   const dateInput = document.getElementById('date-sx').value;
   const cmInput   = document.getElementById('cm').value;
   const sympInput = document.getElementById('symptoms').value;
+  const flowInput = document.getElementById('flow').checked;
 
   if (!dateInput) {
     alert('Please select a date.');
     return;
   }
 
-  // Merge with any existing entry for that date (preserves temp logged separately)
   const entryRef = doc(db, 'cycle_entries', dateInput);
   const existing = await getDoc(entryRef);
-  const base = existing.exists() ? existing.data() : { temp: null, flow: '' };
+  const base = existing.exists() ? existing.data() : { temp: null };
 
   await setDoc(entryRef, {
     ...base,
     date: dateInput,
     cm: cmInput,
     symptoms: sympInput,
+    flow: flowInput,
   });
 
   document.getElementById('cm').value = '';
   document.getElementById('symptoms').value = '';
+  document.getElementById('flow').checked = false;
 }
 
 // ── DATA MANAGEMENT ───────────────────────────────────────────────────────────
@@ -152,7 +150,7 @@ function detectPeriods() {
   let inPeriod = false;
   let start = null;
   for (const e of cycleData) {
-    if (e.flow && !inPeriod) { inPeriod = true; start = e.date; }
+    if (e.flow === true && !inPeriod) { inPeriod = true; start = e.date; }
     else if (!e.flow && inPeriod) {
       periods.push({ start, end: cycleData[cycleData.indexOf(e) - 1]?.date || start });
       inPeriod = false;
@@ -235,7 +233,7 @@ function initializeChart() {
             label: ctx => {
               const e = cycleData[ctx.dataIndex];
               let parts = [`Temp: ${e.temp}°C`];
-              if (e.flow)     parts.push(`Flow: ${e.flow}`);
+              if (e.flow === true) parts.push('Period');
               if (e.cm)       parts.push(`CM: ${e.cm}`);
               if (e.symptoms) parts.push(`Symptoms: ${e.symptoms}`);
               return parts;
@@ -255,7 +253,7 @@ function getChartDataStructure() {
   const temps  = cycleData.map(e => e.temp);
 
   const pointColors = cycleData.map(e => {
-    if (e.flow)                    return '#e05555';
+    if (e.flow === true)            return '#e05555';
     if (e.date === ctx.ovDay)      return '#9b59b6';
     if (e.symptoms === 'migraine') return '#222';
     if (ovDateObj) {
@@ -269,7 +267,7 @@ function getChartDataStructure() {
   });
 
   const pointRadii = cycleData.map(e =>
-    (e.flow || e.date === ctx.ovDay || e.symptoms === 'migraine' || e.cm === 'egg-white') ? 7 : 4
+    (e.flow === true || e.date === ctx.ovDay || e.symptoms === 'migraine' || e.cm === 'egg-white') ? 7 : 4
   );
   const pointStyles = cycleData.map(e =>
     e.symptoms === 'migraine' ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
