@@ -77,9 +77,7 @@ function clearData() {
 }
 
 // ── API KEY ───────────────────────────────────────────────────────────────────
-function getApiKey() {
-  return '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';
-}
+function getApiKey() { return true; }
 
 // ── DATA ENTRY ────────────────────────────────────────────────────────────────
 async function addDailyData() {
@@ -207,12 +205,6 @@ async function generateDailyNote(entry) {
   noteDate.textContent = '';
 
   const apiKey = getApiKey();
-  if (!apiKey) {
-    noteLoading.style.display = 'none';
-    noteText.textContent = `Logged ${entry.temp}°C for ${entry.date}. Add your Anthropic API key below the chat to get personalised daily notes! ✨`;
-    noteDate.textContent = new Date().toLocaleString();
-    return;
-  }
 
   const dataSummary = buildDataSummary();
   const prompt = `${dataSummary}
@@ -227,9 +219,9 @@ Write a warm, concise paragraph (3-5 sentences) as a personalised cycle note for
 - Tone: warm, knowledgeable friend, not clinical. No bullet points. No headers. Just flowing prose.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/claude', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
         max_tokens: 300,
@@ -261,10 +253,6 @@ async function sendChat() {
   appendBubble(msg, 'user');
 
   const apiKey = getApiKey();
-  if (!apiKey) {
-    appendBubble('Please add your Anthropic API key using the ⚙ settings below to use the chat.', 'error');
-    return;
-  }
 
   const dataSummary = buildDataSummary();
   const systemPrompt = `You are a knowledgeable, warm cycle health assistant helping someone with PCOS understand their basal body temperature and cycle data. You have access to their data below. Give clear, friendly, informative answers. Never diagnose. Recommend consulting a doctor for medical concerns. Keep responses concise (under 150 words unless a detailed explanation is needed).
@@ -278,9 +266,9 @@ ${dataSummary}`;
   appendBubble('…', 'ai', loadingId);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/claude', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
         max_tokens: 400,
