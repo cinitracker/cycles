@@ -244,7 +244,7 @@ Write a warm, concise paragraph (3-5 sentences) as a personalised cycle note for
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 300,
         messages: [{ role: 'user', content: prompt }]
       })
@@ -295,7 +295,7 @@ ${dataSummary}`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 400,
         system: systemPrompt,
         messages: chatHistory
