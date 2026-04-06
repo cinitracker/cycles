@@ -168,17 +168,6 @@
     <input type="text" id="chat-input" class="chat-input" placeholder="e.g. Am I in my fertile window?" onkeydown="if(event.key==='Enter') sendChat()">
     <button class="chat-send-btn" onclick="sendChat()">Send</button>
   </div>
-
-  <!-- API KEY SETUP -->
-  <div class="api-key-section" id="api-key-section">
-    <details>
-      <summary>⚙ Set Anthropic API Key</summary>
-      <div class="api-key-inner">
-        <p>Your key is stored only in your browser (localStorage) and never sent anywhere except Anthropic's API.</p>
-        <input type="password" id="api-key-input" placeholder="sk-ant-…" class="api-key-field">
-        <button class="action-btn" onclick="saveApiKey()">Save Key</button>
-        <span id="api-key-status" class="api-key-status"></span>
-      </div>
     </details>
   </div>
 </section>

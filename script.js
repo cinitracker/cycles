@@ -77,21 +77,8 @@ function clearData() {
 }
 
 // ── API KEY ───────────────────────────────────────────────────────────────────
-function saveApiKey() {
-  const key = document.getElementById('api-key-input').value.trim();
-  if (!key.startsWith('sk-')) {
-    document.getElementById('api-key-status').textContent = '✕ Key should start with sk-';
-    document.getElementById('api-key-status').style.color = '#e05555';
-    return;
-  }
-  localStorage.setItem('ctracker_api_key', key);
-  document.getElementById('api-key-status').textContent = '✓ Saved';
-  document.getElementById('api-key-status').style.color = '#2ed573';
-  document.getElementById('api-key-input').value = '';
-}
-
 function getApiKey() {
-  return localStorage.getItem('ctracker_api_key') || '';
+  return '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';
 }
 
 // ── DATA ENTRY ────────────────────────────────────────────────────────────────
@@ -492,7 +479,5 @@ window.onload = function () {
 
   // Show saved API key indicator
   if (getApiKey()) {
-    document.getElementById('api-key-status').textContent = '✓ Key saved';
-    document.getElementById('api-key-status').style.color = '#2ed573';
   }
 };
