@@ -1,57 +1,43 @@
+// ── FIREBASE CLOUD SETUP ──────────────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, onSnapshot, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDwmyqSeMeME5JQOXtLl8-pqKRBFJkGmoU",
+  authDomain: "cycletracker-e2a24.firebaseapp.com",
+  databaseURL: "https://cycletracker-e2a24-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "cycletracker-e2a24",
+  storageBucket: "cycletracker-e2a24.firebasestorage.app",
+  messagingSenderId: "978749842347",
+  appId: "1:978749842347:web:851c918d1a348f2b1968ee"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const entriesCol = collection(db, 'cycle_entries');
+
 // ── STATE ────────────────────────────────────────────────────────────────────
-let cycleData = loadData();
+let cycleData = [];
 let bbtChart;
 
-// ── PERSISTENCE ──────────────────────────────────────────────────────────────
-function loadData() {
-  try {
-    const stored = localStorage.getItem('ctracker_data');
-    return stored ? JSON.parse(stored) : [];
-  } catch { return []; }
-}
-
-function saveData() {
-  localStorage.setItem('ctracker_data', JSON.stringify(cycleData));
-}
-
-function exportData() {
-  const blob = new Blob([JSON.stringify(cycleData, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `ctracker-backup-${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-}
-
-function importData(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const imported = JSON.parse(e.target.result);
-      if (!Array.isArray(imported)) throw new Error('Invalid format');
-      cycleData = imported.sort((a, b) => new Date(a.date) - new Date(b.date));
-      saveData();
-      updateChartData();
-      calculateInsights();
-      alert(`Imported ${cycleData.length} entries.`);
-    } catch { alert('Could not read file. Make sure it is a valid CTracker JSON export.'); }
-  };
-  reader.readAsText(file);
-}
-
-function clearData() {
-  if (!confirm('Clear ALL data? This cannot be undone. Export a backup first!')) return;
-  cycleData = [];
-  saveData();
-  updateChartData();
-  calculateInsights();
-  document.getElementById('daily-note-section').style.display = 'none';
-}
-
+// ── REAL-TIME CLOUD SYNC ─────────────────────────────────────────────────────
+// This listens to your cloud database. Any time data is added from your phone or laptop, it updates here!
+onSnapshot(entriesCol, (snapshot) => {
+    cycleData = [];
+    snapshot.forEach(doc => {
+        cycleData.push(doc.data());
+    });
+    cycleData.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    if (bbtChart) {
+        updateChartData();
+        calculateInsights();
+    }
+});
 
 // ── DATA ENTRY ────────────────────────────────────────────────────────────────
-function addDailyData() {
+async function addDailyData() {
   const dateInput = document.getElementById('date').value;
   const tempInput = parseFloat(document.getElementById('temp').value);
   const flowInput = document.getElementById('flow').value;
@@ -63,38 +49,86 @@ function addDailyData() {
     return;
   }
 
-  // Remove existing entry for same date if re-logging
-  cycleData = cycleData.filter(e => e.date !== dateInput);
-  cycleData.push({ date: dateInput, temp: tempInput, flow: flowInput, cm: cmInput, symptoms: sympInput });
-  cycleData.sort((a, b) => new Date(a.date) - new Date(b.date));
-  saveData();
+  // Save directly to the cloud! Using the date as the unique ID prevents duplicates.
+  const entryRef = doc(db, 'cycle_entries', dateInput);
+  await setDoc(entryRef, {
+      date: dateInput,
+      temp: tempInput,
+      flow: flowInput,
+      cm: cmInput,
+      symptoms: sympInput
+  });
 
+  // Reset form
   document.getElementById('temp').value = '';
   document.getElementById('flow').value = '';
   document.getElementById('cm').value = '';
   document.getElementById('symptoms').value = '';
-
-  updateChartData();
-  calculateInsights();
-
 }
+
+// ── DATA MANAGEMENT ───────────────────────────────────────────────────────────
+function exportData() {
+  const blob = new Blob([JSON.stringify(cycleData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ctracker-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('Invalid format');
+      
+      // Batch upload all imported data to the cloud
+      const batch = writeBatch(db);
+      imported.forEach(entry => {
+          const docRef = doc(db, 'cycle_entries', entry.date);
+          batch.set(docRef, entry);
+      });
+      await batch.commit();
+      alert(`Successfully uploaded ${imported.length} entries to your cloud database!`);
+    } catch { 
+        alert('Could not read file. Make sure it is a valid JSON export.'); 
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function clearData() {
+  if (!confirm('Clear ALL data from your cloud? This cannot be undone. Export a backup first!')) return;
+  
+  // Fetch all documents and delete them from the cloud
+  const snap = await getDocs(entriesCol);
+  const batch = writeBatch(db);
+  snap.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+}
+
+// Expose functions to the HTML window (required because this is now a module)
+window.addDailyData = addDailyData;
+window.exportData = exportData;
+window.importData = importData;
+window.clearData = clearData;
 
 // ── CYCLE ANALYSIS HELPERS ───────────────────────────────────────────────────
 function detectOvulation() {
   if (cycleData.length < 6) return null;
   const temps = cycleData.map(e => e.temp);
-  // Look for a sustained rise of ≥0.2°C above the previous 6-day mean
   for (let i = 6; i < temps.length; i++) {
     const baseline = temps.slice(i - 6, i).reduce((a, b) => a + b, 0) / 6;
     if (temps[i] - baseline >= 0.18 && (i + 1 >= temps.length || temps[i + 1] > baseline + 0.1)) {
-      return cycleData[i - 1].date; // day before the rise = ovulation
+      return cycleData[i - 1].date; 
     }
   }
   return null;
 }
 
 function detectPeriods() {
-  // Returns array of { start, end } objects
   const periods = [];
   let inPeriod = false;
   let start = null;
@@ -102,7 +136,7 @@ function detectPeriods() {
     if (e.flow && !inPeriod) { inPeriod = true; start = e.date; }
     else if (!e.flow && inPeriod) { periods.push({ start, end: cycleData[cycleData.indexOf(e) - 1]?.date || start }); inPeriod = false; }
   }
-  if (inPeriod) periods.push({ start, end: cycleData[cycleData.length - 1].date });
+  if (inPeriod && cycleData.length > 0) periods.push({ start, end: cycleData[cycleData.length - 1].date });
   return periods;
 }
 
@@ -123,42 +157,11 @@ function getCycleContext() {
   }
 
   const periodStart = lastPeriod ? new Date(lastPeriod.start) : null;
-
-  // Predicted next cycle
   const predictedPeriod    = periodStart ? new Date(+periodStart + cycleLength * 86400000) : null;
   const predictedOvulation = periodStart ? new Date(+periodStart + (cycleLength - lpLength) * 86400000) : null;
   const fertileStart       = predictedOvulation ? new Date(+predictedOvulation - 5 * 86400000) : null;
 
   return { ovDay, periods, lastPeriod, cycleLength, lpLength, predictedPeriod, predictedOvulation, fertileStart };
-}
-
-function buildDataSummary() {
-  const ctx = getCycleContext();
-  const today = new Date().toISOString().slice(0, 10);
-  const recentEntries = cycleData.slice(-7);
-  const recentSummary = recentEntries.map(e =>
-    `${e.date}: ${e.temp}°C${e.flow ? ' | flow:' + e.flow : ''}${e.cm ? ' | cm:' + e.cm : ''}${e.symptoms ? ' | sx:' + e.symptoms : ''}`
-  ).join('\n');
-
-  const symptomsAll = cycleData.filter(e => e.symptoms).map(e => `${e.date}: ${e.symptoms}`).join(', ');
-
-  return `USER CYCLE DATA SUMMARY
-Today: ${today}
-Total logged days: ${cycleData.length}
-Detected ovulation: ${ctx.ovDay || 'not yet detected'}
-Last period start: ${ctx.lastPeriod?.start || 'unknown'}
-Estimated cycle length: ${ctx.cycleLength} days
-Estimated luteal phase: ${ctx.lpLength} days
-Predicted next period: ${ctx.predictedPeriod?.toISOString().slice(0,10) || 'unknown'}
-Predicted next ovulation: ${ctx.predictedOvulation?.toISOString().slice(0,10) || 'unknown'}
-Predicted fertile window: ${ctx.fertileStart?.toISOString().slice(0,10) || '?'} to ${ctx.predictedOvulation?.toISOString().slice(0,10) || '?'}
-
-Recent 7 days:
-${recentSummary}
-
-Logged symptoms: ${symptomsAll || 'none'}
-
-Note: User has PCOS and is tracking cervical mucus carefully. PCOS can cause delayed or absent ovulation, variable cycle lengths, and atypical CM patterns.`;
 }
 
 // ── CHART ─────────────────────────────────────────────────────────────────────
@@ -264,7 +267,6 @@ function updateChartData() {
 function calculateInsights() {
   const ctx = getCycleContext();
 
-  // Phase averages
   const folTemps = ctx.ovDay
     ? cycleData.filter(e => new Date(e.date) <= new Date(ctx.ovDay)).map(e => e.temp)
     : cycleData.slice(0, Math.floor(cycleData.length / 2)).map(e => e.temp);
@@ -276,9 +278,9 @@ function calculateInsights() {
   document.getElementById('avg-fol').textContent = avg(folTemps);
   document.getElementById('avg-lut').textContent = avg(lutTemps);
 
-  // Ovulation
   if (ctx.ovDay) {
     document.getElementById('ov-status').textContent = 'Confirmed ✦';
+    document.getElementById('ov-status').style.color = '#9b59b6';
     document.getElementById('ov-prediction').textContent = `Detected around ${ctx.ovDay}`;
   } else {
     document.getElementById('ov-status').textContent = 'Not yet';
@@ -286,36 +288,26 @@ function calculateInsights() {
     document.getElementById('ov-prediction').textContent = 'Watching for biphasic shift.';
   }
 
-  // Forecast
   const fmt = (d, opts) => d ? d.toLocaleDateString(undefined, opts || { weekday:'short', month:'short', day:'numeric' }) : '--';
   const shortFmt = d => fmt(d, { month:'short', day:'numeric' });
   document.getElementById('next-period').textContent    = fmt(ctx.predictedPeriod);
   document.getElementById('next-ovulation').textContent = fmt(ctx.predictedOvulation);
   document.getElementById('next-fertile').textContent   = ctx.fertileStart ? `${shortFmt(ctx.fertileStart)} – ${shortFmt(ctx.predictedOvulation)}` : '--';
 
-  // Symptom pattern
   const migraineEntries = cycleData.filter(e => e.symptoms === 'migraine');
   const symptomEl = document.getElementById('symptom-pattern');
-  if (migraineEntries.length > 0 && ctx.lastPeriod) {
-    const daysBefore = migraineEntries.map(e => {
-      return Math.round((new Date(ctx.lastPeriod.start) - new Date(e.date)) / 86400000);
-    }).filter(d => d >= 0 && d <= 5);
-    if (daysBefore.length) {
-      const avg = (daysBefore.reduce((a,b) => a+b,0) / daysBefore.length).toFixed(0);
-      symptomEl.innerHTML = `🧠 <strong>Menstrual migraine pattern detected.</strong> Your migraines tend to appear ~${avg} day${avg==1?'':'s'} before your period — likely triggered by the drop in oestrogen.`;
-    }
-  }
-
-  const bloatEntries = cycleData.filter(e => e.symptoms === 'bloating');
-  if (bloatEntries.length >= 2 && ctx.ovDay) {
-    const lutealBloat = bloatEntries.filter(e => new Date(e.date) > new Date(ctx.ovDay));
-    if (lutealBloat.length >= 2) {
-      symptomEl.innerHTML += (symptomEl.innerHTML ? '<br><br>' : '') + `🫧 Bloating appears mainly in your <strong>luteal phase</strong> — a progesterone effect, very common with PCOS.`;
-    }
-  }
-
-  if (!symptomEl.innerHTML) {
-    symptomEl.textContent = 'Log more days with symptoms to see patterns.';
+  if (symptomEl) {
+      if (migraineEntries.length > 0 && ctx.lastPeriod) {
+        const daysBefore = migraineEntries.map(e => {
+          return Math.round((new Date(ctx.lastPeriod.start) - new Date(e.date)) / 86400000);
+        }).filter(d => d >= 0 && d <= 5);
+        if (daysBefore.length) {
+          const avgNum = (daysBefore.reduce((a,b) => a+b,0) / daysBefore.length).toFixed(0);
+          symptomEl.innerHTML = `🧠 <strong>Menstrual migraine pattern detected.</strong> Your migraines tend to appear ~${avgNum} day${avgNum==1?'':'s'} before your period.`;
+        }
+      } else {
+        symptomEl.textContent = 'Log more days with symptoms to see patterns.';
+      }
   }
 }
 
@@ -324,5 +316,4 @@ window.onload = function () {
   document.getElementById('date').valueAsDate = new Date();
   initializeChart();
   calculateInsights();
-
 };
