@@ -219,7 +219,7 @@ Write a warm, concise paragraph (3-5 sentences) as a personalised cycle note for
 - Tone: warm, knowledgeable friend, not clinical. No bullet points. No headers. Just flowing prose.`;
 
   try {
-    const res = await fetch('/api/claude', {
+    const res = await fetch('https://69d391d--cozy-klepon-7e03df.netlify.app/.netlify/functions/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -266,7 +266,7 @@ ${dataSummary}`;
   appendBubble('…', 'ai', loadingId);
 
   try {
-    const res = await fetch('/api/claude', {
+    const res = await fetch('https://69d391d--cozy-klepon-7e03df.netlify.app/.netlify/functions/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
