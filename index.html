@@ -137,16 +137,14 @@
 
 <!-- DATA MANAGEMENT -->
 <section class="card data-card">
-  <h2 class="section-title">Your Data</h2>
   <div class="data-actions">
-    <button class="action-btn export-btn" onclick="exportData()">⬇ Export JSON</button>
+    <button class="action-btn export-btn" onclick="exportData()">Export</button>
     <label class="action-btn import-btn">
-      ⬆ Import JSON
+      Import
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
     </label>
-    <button class="action-btn danger-btn" onclick="clearData()">✕ Clear All</button>
+    <button class="action-btn danger-btn" onclick="clearData()">Clear</button>
   </div>
-  <p class="data-note">Data is synced to your personal cloud. Export regularly as a backup.</p>
 </section>
 
 <footer>
