@@ -192,11 +192,24 @@ function getPhaseForDate(dateStr, ctx) {
   const ovDate = ctx.ovDay ? new Date(ctx.ovDay) : null;
   const fertileStart = ovDate ? new Date(+ovDate - 5 * 86400000) : null;
 
+  // Check if in a period first
   for (const p of ctx.periods) {
     const ps = new Date(p.start);
     const pe = new Date(p.end);
     if (d >= ps && d <= pe) return 'period';
   }
+
+  // Find the most recent period start before this date
+  const lastPeriodBeforeDate = [...ctx.periods]
+    .filter(p => new Date(p.start) <= d)
+    .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+
+  // If ovulation happened BEFORE the most recent period, it belongs to the
+  // previous cycle — this date is in a new cycle → follicular
+  if (ovDate && lastPeriodBeforeDate && ovDate < new Date(lastPeriodBeforeDate.start)) {
+    return 'follicular';
+  }
+
   if (ovDate && dateStr === ctx.ovDay) return 'ovulation';
   if (ovDate && fertileStart && d >= fertileStart && d <= ovDate) return 'fertile';
   if (ovDate && d > ovDate) return 'luteal';
@@ -258,13 +271,10 @@ function getChartDataStructure() {
   const pointColors = cycleData.map(e => {
     if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#e05555';
     if (e.date === ctx.ovDay) return '#9b59b6';
-    if (e.symptoms && e.symptoms.includes('migraine')) return '#222'; // CHANGED: Now looks inside string
-    if (ovDateObj) {
-      const d = new Date(e.date);
-      const fertileStart = new Date(+ovDateObj - 5 * 86400000);
-      if (d >= fertileStart && d <= ovDateObj) return '#2ed573';
-      if (d > ovDateObj) return '#8bb6e0';
-    }
+    if (e.symptoms && e.symptoms.includes('migraine')) return '#222';
+    const phase = getPhaseForDate(e.date, ctx);
+    if (phase === 'fertile') return '#2ed573';
+    if (phase === 'luteal') return '#8bb6e0';
     if (e.cm === 'egg-white') return '#2ed573';
     return '#d4768a';
   });
