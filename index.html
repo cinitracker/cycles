@@ -34,30 +34,31 @@
       <input type="date" id="date-temp">
     </div>
     <div class="field">
-      <input type="number" id="temp" step="0.01" placeholder="Temp °C">
+      <input type="number" id="temp" step="0.01" placeholder="Temperature °C">
     </div>
-    <button class="log-btn" onclick="addTempData()">
-      <span class="btn-icon">＋</span> Log Temperature
+    <button class="log-btn icon-btn" onclick="addTempData()" title="Log Temperature">
+      ＋
     </button>
   </div>
 </section>
 
 <section class="card log-card">
-  <h2 class="section-title">Symptoms</h2>
+  <h2 class="section-title">Symptoms and Period</h2>
   <div class="input-grid input-grid--symptoms">
     <div class="field">
       <input type="date" id="date-sx">
     </div>
     <div class="field">
-      <select id="cm">
-        <option value="">None / Unchecked</option>
+      <select id="cm" required>
+        <option value="" disabled selected hidden>CM type</option>
         <option value="dry">Dry</option>
         <option value="sticky">Sticky</option>
         <option value="creamy">Creamy</option>
         <option value="egg-white">Egg-White</option>
       </select>
     </div>
-    <div class="field">
+    
+    <div class="field" style="grid-column: 1 / -1;">
       <div class="checkbox-group">
         <label class="cb-label"><input type="checkbox" value="migraine" class="symptom-box"> Migraine</label>
         <label class="cb-label"><input type="checkbox" value="bloating" class="symptom-box"> Bloating</label>
@@ -65,23 +66,23 @@
       </div>
     </div>
     
-    <div class="field field--period">
+    <div class="bottom-action-row">
       <label class="toggle">
         <input type="checkbox" id="flow">
         <span class="toggle-slider"></span>
         <span class="toggle-label">PERIOD</span>
       </label>
+      
+      <button class="log-btn log-btn--sx icon-btn" onclick="addSymptomsData()" title="Log Symptoms">
+        ＋
+      </button>
     </div>
-    
-    <button class="log-btn log-btn--sx" onclick="addSymptomsData()">
-      <span class="btn-icon">＋</span> Log Symptoms
-    </button>
   </div>
 </section>
 
 <!-- BBT CHART -->
 <section class="card chart-card">
-  <h3 class="chart-title">Basal Body Temperature</h3>
+  <h3 class="chart-title">Cycles</h3>
   <div class="chart-legend">
     <span class="legend-dot" style="background:#d4768a"></span>Follicular
     <span class="legend-dot" style="background:#2ed573"></span>Fertile
@@ -149,7 +150,7 @@
 </section>
 
 <footer>
-  <p>Data synced via Firebase. 🌸</p>
+  <p>Cini. 🌸</p>
 </footer>
 
 <script type="module" src="script.js?v=2"></script>

@@ -4,7 +4,7 @@
 :root {
   --rose:       #c97b84;
   --rose-light: #f0d0d4;
-  --rose-pale:  #fcf4f4;
+  --rose-pale:  #f0f4f8;  
   --mauve:      #9b59b6;
   --blue:       #8bb6e0;
   --green:      #2ed573;
@@ -21,55 +21,62 @@ html { scroll-behavior: smooth; }
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: var(--rose-pale);
+  
+  /* The Blue-to-Purple Gradient covers the whole page */
+  background: linear-gradient(135deg, #4b8cdb 0%, #9b59b6 100%);
+  background-attachment: fixed; /* Locks the gradient in place when scrolling */
+  
   color: var(--ink);
   min-height: 100vh;
   padding: 0 0 60px;
-  /* prevent horizontal overflow on mobile */
   overflow-x: hidden;
 }
 
 /* ── HEADER ── */
 header {
-  background: linear-gradient(135deg, #c97b84 0%, #b5637c 50%, #9b59b6 100%);
+  background: transparent; /* Lets the body gradient show through */
   padding: 32px 16px 24px;
   text-align: center;
   position: relative;
   overflow: hidden;
 }
 header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  display: none; 
 }
 h1 {
   font-family: 'Playfair Display', serif;
   font-size: clamp(1.6rem, 6vw, 3rem);
-  color: #fff;
+  color: #ffffff; /* Crisp white text */
   letter-spacing: -0.01em;
   position: relative;
 }
-h1 em { font-style: italic; font-weight: 400; }
+h1 em { 
+  font-style: italic; 
+  font-weight: 400; 
+}
 .subtitle {
   font-size: 0.75rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.75);
+  color: #000000; /* Slightly soft white */
   margin-top: 6px;
   position: relative;
 }
 
 /* ── CARDS ── */
 .card {
-  background: var(--card-bg);
+  background: rgba(255, 255, 255, 0.25); 
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  
+  border: none; /* 👈 Bye bye cheap borders */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); /* 👈 Deep, rich shadow for floating effect */
+
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   padding: 20px 16px;
   margin: 16px auto;
   max-width: 860px;
   width: calc(100% - 24px);
-  border: 1px solid var(--border);
 }
 
 .section-title {
@@ -78,6 +85,7 @@ h1 em { font-style: italic; font-weight: 400; }
   font-weight: 600;
   color: var(--ink);
   margin-bottom: 14px;
+  text-align: center; /* 👈 Add this line */
 }
 
 /* ── LOG FORMS ── */
@@ -87,10 +95,69 @@ h1 em { font-style: italic; font-weight: 400; }
   align-items: end;
 }
 .input-grid--temp {
-  grid-template-columns: 1fr 1fr;
+  /* 1 part Date, 1 part Temp, and exactly 44px for the square button */
+  grid-template-columns: 1fr 1fr 44px; 
+  align-items: center; /* This perfectly centers them vertically now that labels are gone */
 }
+
+/* The new square Icon Button */
+.input-grid--temp .icon-btn {
+  grid-column: auto;
+  width: 44px;
+  height: 44px;
+  min-height: unset;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 1.5rem; /* Makes the + sign nice and clear */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Puts the Period toggle and the Log button on the same line */
+.bottom-action-row {
+  grid-column: 1 / -1; /* Stretches across the whole grid */
+  display: flex;
+  justify-content: space-between; /* Pushes toggle left, button right */
+  align-items: center; /* Perfectly centers them vertically */
+  margin-top: 4px;
+}
+
+/* Re-use the square button sizing we made earlier */
+.bottom-action-row .icon-btn {
+  width: 44px;
+  height: 44px;
+  min-height: unset;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 1.5rem;
+  margin: 0; 
+}
+
+/* 1. Perfect Cross-Card Alignment */
 .input-grid--symptoms {
-  grid-template-columns: 1fr 1fr;
+  /* Mimics the exact math of the Temperature card */
+  grid-template-columns: 1fr 1fr 44px; 
+}
+
+/* Forces the Symptoms Date box to exactly match the Temperature Date box width */
+.input-grid--symptoms > .field:nth-child(1) {
+  grid-column: 1 / 2;
+}
+
+/* Lets the CM Type box comfortably fill the rest of the row */
+.input-grid--symptoms > .field:nth-child(2) {
+  grid-column: 2 / 4;
+}
+
+/* 2. Gray Dropdown Placeholder Text */
+/* Because we added 'required', the empty placeholder is technically 'invalid' and turns gray */
+select:invalid {
+  color: #888; 
+}
+/* But once you pick a real option, it snaps back to your standard ink color! */
+select option {
+  color: var(--ink); 
 }
 
 .field-label {
@@ -105,57 +172,64 @@ h1 em { font-style: italic; font-weight: 400; }
 
 input[type="date"], input[type="number"], select {
   width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid var(--border);
+  height: 44px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  
+  background: rgba(255, 255, 255, 0.3);
+  border: none; /* 👈 Removed border */
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05); /* Soft inner-shadow makes it look indented */
+  
   border-radius: 10px;
   font-family: 'DM Sans', sans-serif;
-  font-size: 1rem; /* larger for mobile tap */
+  font-size: 1rem; 
   color: var(--ink);
-  background: var(--rose-pale);
-  transition: border-color 0.2s;
+  transition: all 0.3s ease;
   -webkit-appearance: none;
   appearance: none;
 }
-input:focus, select:focus { outline: none; border-color: var(--rose); }
+
+/* Make them light up smoothly when you tap them */
+input:focus, select:focus { 
+  outline: none; 
+  background: rgba(255, 255, 255, 0.6); 
+  border-color: rgba(255, 255, 255, 0.9);
+}
 
 .log-btn {
-  grid-column: 1 / -1;
-  padding: 14px;
-  background: linear-gradient(135deg, var(--rose), #b5637c);
-  color: white;
+  /* Solid white button to pop off the glass */
+  background: rgba(255, 255, 255, 0.9);
+  color: #4b8cdb; /* Blue icon */
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
   font-weight: 500;
-  font-size: 1rem;
-  letter-spacing: 0.03em;
-  transition: opacity 0.2s, transform 0.1s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px; /* minimum tap target */
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
-.log-btn:hover { opacity: 0.9; }
-.log-btn:active { transform: scale(0.98); }
-.btn-icon { font-size: 1.2rem; }
+
+.log-btn:hover { background: #ffffff; transform: translateY(-1px); }
+.log-btn:active { transform: scale(0.96); }
 
 .log-btn--sx {
-  background: linear-gradient(135deg, var(--mauve), #7d3c98);
+  color: #9b59b6; /* Purple icon for the symptoms button */
 }
 
 .checkbox-group {
   display: flex;
-  flex-direction: row; /* Flips them horizontally */
-  flex-wrap: wrap;     /* Lets them bump to a new line on tiny phone screens */
-  gap: 16px;           /* Gives them nice breathing room */
+  flex-direction: row; 
+  flex-wrap: wrap;     
+  gap: 16px;           
   margin-top: 8px;
-  background: white;
   padding: 12px;
-  border: 1.5px solid var(--border);
   border-radius: 10px;
+  
+  /* Inside .checkbox-group */
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
 }
+
 .cb-label {
   display: flex;
   align-items: center;
@@ -313,8 +387,9 @@ input:focus, select:focus { outline: none; border-color: var(--rose); }
 .action-btn {
   padding: 10px 16px;
   border-radius: 8px;
-  border: 1.5px solid var(--border);
-  background: white;
+  border: none;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.601); /* Subtle frosted effect */
   font-family: 'DM Sans', sans-serif;
   font-size: 0.85rem;
   cursor: pointer;
@@ -326,16 +401,16 @@ input:focus, select:focus { outline: none; border-color: var(--rose); }
   min-height: 44px;
 }
 .action-btn:hover { background: var(--rose-pale); }
-.export-btn { border-color: var(--blue); color: var(--blue); }
-.import-btn { border-color: var(--green); color: #1a9f50; }
-.danger-btn { border-color: #f0a0a0; color: var(--red); }
-.data-note { font-size: 0.78rem; color: #aaa; }
+.export-btn { color: var(--blue); }
+.import-btn { color: var(--blue); }
+.danger-btn { color: var(--blue); }
+.data-note { font-size: 0.78rem; color: var(--blue); }
 
 /* ── FOOTER ── */
 footer {
   text-align: center;
   font-size: 0.75rem;
-  color: #bbb;
+  color: #000000;
   padding: 30px 20px 0;
 }
 
@@ -350,7 +425,15 @@ footer {
     margin: 12px auto;
   }
 
-  .input-grid--temp { grid-template-columns: 1fr 1fr; }
+  /* Keep all 3 items on the same row for mobile! */
+  .input-grid--temp { grid-template-columns: 1fr 1fr 44px; gap: 8px; }
+    
+  /* Prevent the mobile view from trying to stretch our perfect square */
+  .input-grid--temp .icon-btn { 
+    grid-column: auto; 
+    margin-top: 0; 
+  }
+
   .input-grid--symptoms { grid-template-columns: 1fr 1fr; }
 
   .chart-wrap { height: 220px; }
@@ -409,7 +492,7 @@ footer {
 
 .tapestry-header-cell {
   text-align: center;
-  color: #a08c8f;
+  color: #000000;
   font-size: 0.65rem;
   padding-bottom: 5px;
 }
@@ -428,4 +511,14 @@ footer {
 
 .tapestry-cell:hover {
   opacity: 0.8 !important; /* Slight highlight when touched */
+}
+
+/* Make Dropdown placeholders black */
+select:invalid {
+  color: #000000; 
+}
+/* Make Text/Number input placeholders black */
+input::placeholder {
+  color: #000000;
+  opacity: 1; /* Prevents some browsers from fading it */
 }

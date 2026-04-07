@@ -217,6 +217,46 @@ function getPhaseForDate(dateStr, ctx) {
   return 'follicular';
 }
 
+
+// ── CYCLE DAY CALCULATOR ──────────────────────────────────────────────────────
+// Returns "Day X" where Day 1 = second day of period.
+// The first day of bleeding belongs to the PREVIOUS cycle.
+function getCycleDay(dateStr, ctx) {
+  const d = new Date(dateStr);
+
+  // If you haven't logged any periods at all, we can't calculate a cycle day
+  if (!ctx.periods || ctx.periods.length === 0) {
+    return "Log a period first";
+  }
+
+  // 1. Define "Day 1" for all cycles as the SECOND day of the period (+24 hours)
+  const cycleStarts = ctx.periods.map(p => {
+    const pStart = new Date(p.start);
+    return new Date(pStart.getTime() + 86400000); 
+  });
+
+  // 2. Find the most recent "Day 1" that happened on or before our target date
+  const startsBeforeDate = cycleStarts
+    .filter(start => start <= d)
+    .sort((a, b) => b - a);
+
+  // 3. If no "Day 1" happened yet, we are in the baseline cycle you manually defined
+  if (startsBeforeDate.length === 0) {
+    const firstPeriodStart = new Date(ctx.periods[0].start);
+    const daysBeforeFirstPeriod = Math.round((firstPeriodStart - d) / 86400000);
+    
+    // You stated the first period's start date was Day 33. 
+    // This counts backwards for all dates before it.
+    return "Day " + (33 - daysBeforeFirstPeriod);
+  }
+
+  // 4. If we are inside a tracked cycle, count normally from its Day 1
+  const cycleStart = startsBeforeDate[0];
+  const daysSinceStart = Math.round((d - cycleStart) / 86400000);
+  
+  return "Day " + (daysSinceStart + 1); 
+}
+
 // ── BBT CHART ─────────────────────────────────────────────────────────────────
 function initializeChart() {
   const ctx = document.getElementById('bbtChart').getContext('2d');
@@ -229,14 +269,14 @@ function initializeChart() {
       scales: {
         x: {
           title: { display: true, text: 'Date', color: '#6b4f55', font: { family: 'DM Sans' } },
-          ticks: { color: '#6b4f55', font: { family: 'DM Sans', size: 11 }, maxRotation: 45 },
-          grid: { color: 'rgba(200,160,165,0.12)' }
+          ticks: { color: '#111111', font: { family: 'DM Sans', size: 11, weight: '500' }, maxRotation: 45 },
+          grid: { color: 'rgba(0,0,0,0.05)' }
         },
         y: {
           title: { display: true, text: 'Temp °C', color: '#6b4f55', font: { family: 'DM Sans' } },
           min: 35.5, max: 37.2,
-          ticks: { stepSize: 0.1, color: '#6b4f55', font: { family: 'DM Sans', size: 11 } },
-          grid: { color: 'rgba(200,160,165,0.12)' }
+          ticks: { stepSize: 0.1, color: '#111111', font: { family: 'DM Sans', size: 11, weight: '500' } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
         }
       },
       plugins: {
@@ -246,11 +286,17 @@ function initializeChart() {
           titleFont: { family: 'DM Sans' },
           bodyFont: { family: 'DM Sans' },
           callbacks: {
-            title: ctx => cycleData[ctx[0].dataIndex]?.date || '',
+            title: ctx => {
+              const e = cycleData[ctx[0].dataIndex];
+              if (!e) return '';
+              const cycleCtx = getCycleContext();
+              const day = getCycleDay(e.date, cycleCtx);
+              return `${e.date}  ·  Cycle Day ${day}`;
+            },
             label: ctx => {
               const e = cycleData[ctx.dataIndex];
               let parts = [`Temp: ${e.temp}°C`];
-              if (e.flow === true || (typeof e.flow === 'string' && e.flow)) parts.push('Period');
+              if (e.flow === true || (typeof e.flow === 'string' && e.flow)) parts.push('🔴 Period');
               if (e.cm)       parts.push(`CM: ${e.cm}`);
               if (e.symptoms) parts.push(`Symptoms: ${e.symptoms}`);
               return parts;
