@@ -27,7 +27,8 @@ onSnapshot(entriesCol, (snapshot) => {
   snapshot.forEach(doc => cycleData.push(doc.data()));
   cycleData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  if (bbtChart && symptomsChart) {
+  // THE FIX: We removed "&& symptomsChart" so it no longer waits for the old graph
+  if (bbtChart) {
     updateChartData();
     calculateInsights();
     updateSymptomsChart();
