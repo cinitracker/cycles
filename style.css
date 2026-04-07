@@ -380,3 +380,52 @@ footer {
   .input-grid--temp { grid-template-columns: 1fr; }
   .input-grid--symptoms { grid-template-columns: 1fr; }
 }
+
+/* ── TAPESTRY GRID STYLES ── */
+#symptomsTapestry {
+  width: 100%;
+  overflow-x: auto; /* Allows smooth horizontal scrolling on very tiny phones */
+  padding: 10px 0;
+}
+
+.tapestry-grid {
+  display: grid;
+  /* 1 column for names, 11 equal columns for the days */
+  grid-template-columns: minmax(80px, max-content) repeat(11, 1fr);
+  gap: 3px;
+  width: 100%;
+  min-width: 340px; /* Prevents blocks from becoming microscopically thin */
+  align-items: center;
+}
+
+.tapestry-label {
+  text-align: right;
+  padding-right: 12px;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tapestry-header-cell {
+  text-align: center;
+  color: #a08c8f;
+  font-size: 0.65rem;
+  padding-bottom: 5px;
+}
+
+.tapestry-header-cell.day-one {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.tapestry-cell {
+  height: 28px;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+  cursor: default;
+}
+
+.tapestry-cell:hover {
+  opacity: 0.8 !important; /* Slight highlight when touched */
+}

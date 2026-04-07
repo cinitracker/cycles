@@ -309,81 +309,97 @@ function updateChartData() {
   bbtChart.update();
 }
 
-// ── SYMPTOMS CHART ────────────────────────────────────────────────────────────
+// ── SYMPTOMS CHART (CSS GRID TAPESTRY) ─────────────────────────────────────────
+
 function initializeSymptomsChart() {
-  const ctx = document.getElementById('symptomsChart').getContext('2d');
-  symptomsChart = new Chart(ctx, {
-    type: 'bar',
-    data: getSymptomsChartData(),
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          title: { display: true, text: 'Cycle Phase', color: '#6b4f55', font: { family: 'DM Sans' } },
-          ticks: { color: '#6b4f55', font: { family: 'DM Sans', size: 11 } },
-          grid: { display: false }
-        },
-        y: {
-          title: { display: true, text: 'Days logged', color: '#6b4f55', font: { family: 'DM Sans' } },
-          ticks: { color: '#6b4f55', font: { family: 'DM Sans', size: 11 }, stepSize: 1 },
-          grid: { color: 'rgba(200,160,165,0.12)' },
-          beginAtZero: true
-        }
-      },
-      plugins: {
-        legend: {
-          labels: { color: '#6b4f55', font: { family: 'DM Sans', size: 11 }, boxWidth: 12 }
-        },
-        tooltip: {
-          backgroundColor: '#2c1f22',
-          titleFont: { family: 'DM Sans' },
-          bodyFont: { family: 'DM Sans' },
-        }
-      }
-    }
-  });
-}
-
-function getSymptomsChartData() {
-  const ctx = getCycleContext();
-  const phases = ['follicular', 'fertile', 'ovulation', 'luteal', 'period'];
-  const phaseLabels = ['Follicular', 'Fertile', 'Ovulation', 'Luteal', 'Period'];
-  const symptoms = ['migraine', 'bloating', 'breast-tenderness'];
-  const symptomLabels = ['Migraine', 'Bloating', 'Breast Tenderness'];
-  const colors = ['#222', '#c97b84', '#8bb6e0'];
-
-  const counts = symptoms.map(() => phases.map(() => 0));
-
-  for (const entry of cycleData) {
-    if (!entry.symptoms) continue;
-    const phase = getPhaseForDate(entry.date, ctx);
-    const phaseIdx = phases.indexOf(phase);
-    
-    // NEW LOGIC: Chop up the comma string into an array and count each symptom!
-    const entrySymptoms = entry.symptoms.split(', ');
-    entrySymptoms.forEach(sym => {
-        const symIdx = symptoms.indexOf(sym);
-        if (phaseIdx >= 0 && symIdx >= 0) counts[symIdx][phaseIdx]++;
-    });
-  }
-
-  return {
-    labels: phaseLabels,
-    datasets: symptoms.map((_, i) => ({
-      label: symptomLabels[i],
-      data: counts[i],
-      backgroundColor: colors[i] + 'cc',
-      borderColor: colors[i],
-      borderWidth: 1,
-      borderRadius: 4,
-    }))
-  };
+  // We no longer need Chart.js for this, so we just pass the baton to the update function
+  updateSymptomsChart();
 }
 
 function updateSymptomsChart() {
-  symptomsChart.data = getSymptomsChartData();
-  symptomsChart.update();
+  const container = document.getElementById('symptomsTapestry');
+  if (!container) return; 
+
+  const ctx = getCycleContext();
+  const totalCycles = Math.max(1, ctx.periods.length);
+
+  // 1. Find all unique symptoms
+  const uniqueSymptoms = new Set();
+  cycleData.forEach(e => {
+    if (e.symptoms) {
+      e.symptoms.split(', ').forEach(s => {
+        if (s.trim() !== '' && s !== 'period') uniqueSymptoms.add(s.trim());
+      });
+    }
+  });
+  const symptomsList = Array.from(uniqueSymptoms);
+
+  // 2. Count occurrences (-7 to +3)
+  const counts = {};
+  symptomsList.forEach(sym => {
+    counts[sym] = {};
+    for (let i = -7; i <= 3; i++) counts[sym][i] = 0;
+  });
+
+  for (const entry of cycleData) {
+    if (!entry.symptoms) continue;
+
+    let minDiff = Infinity;
+    for (const p of ctx.periods) {
+      const pStart = new Date(p.start);
+      const eDate = new Date(entry.date);
+      const diffDays = Math.round((eDate - pStart) / 86400000);
+      if (Math.abs(diffDays) < Math.abs(minDiff)) minDiff = diffDays;
+    }
+
+    if (minDiff !== Infinity && minDiff >= -7 && minDiff <= 3) {
+      entry.symptoms.split(', ').forEach(sym => {
+        const cleanSym = sym.trim();
+        if (counts[cleanSym] && counts[cleanSym][minDiff] !== undefined) {
+          counts[cleanSym][minDiff]++;
+        }
+      });
+    }
+  }
+
+  // 3. Build the Grid HTML dynamically
+  let html = `<div class="tapestry-grid">`;
+
+  // Draw the Header Row (The Days)
+  html += `<div class="tapestry-label" style="opacity: 0;">Day</div>`; // Invisible placeholder for layout
+  for (let day = -7; day <= 3; day++) {
+    html += `<div class="tapestry-header-cell ${day === 0 ? 'day-one' : ''}">${day === 0 ? 'Day 1' : day}</div>`;
+  }
+
+  // A cohesive color palette using RGB so we can manipulate the opacity
+  // Matches your CSS variables: Rose, Mauve, Blue, Red, Green
+  const colorPalette = ['201, 123, 132', '155, 89, 182', '139, 182, 224', '224, 85, 85', '46, 213, 115'];
+
+  // Draw the Data Rows (The Symptoms)
+  symptomsList.forEach((sym, index) => {
+    const rgb = colorPalette[index % colorPalette.length];
+    const displayName = sym.charAt(0).toUpperCase() + sym.slice(1);
+
+    // Symptom Name Label
+    html += `<div class="tapestry-label">${displayName}</div>`;
+
+    // The Color Blocks
+    for (let day = -7; day <= 3; day++) {
+      const count = counts[sym][day];
+      const prob = count > 0 ? Math.round((count / totalCycles) * 100) : 0;
+      
+      // Minimum 20% opacity so single occurrences are still visible
+      let alpha = 0;
+      if (count > 0) alpha = Math.max(0.2, prob / 100);
+
+      html += `<div class="tapestry-cell" style="background-color: rgba(${rgb}, ${alpha});" title="${displayName}: ${prob}% frequency"></div>`;
+    }
+  });
+
+  html += `</div>`;
+  
+  // Inject the HTML into the page
+  container.innerHTML = html;
 }
 
 // ── INSIGHTS ──────────────────────────────────────────────────────────────────
