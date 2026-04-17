@@ -1,161 +1,545 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cycle Tracker</title>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#c97b84">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="CTracker">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2">
-</head>
-<body>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<header>
-  <div class="header-inner">
-    <h1>Cini<em>tracker</em></h1>
-  </div>
-</header>
+:root {
+  --rose:       #c97b84;
+  --rose-light: #f0d0d4;
+  --rose-pale:  #f0f4f8;  
+  --mauve:      #9b59b6;
+  --blue:       #8bb6e0;
+  --green:      #2ed573;
+  --red:        #e05555;
+  --ink:        #2c1f22;
+  --ink-soft:   #6b4f55;
+  --card-bg:    #ffffff;
+  --border:     #ecdcde;
+  --shadow:     0 2px 16px rgba(180,100,110,0.08);
+  --radius:     16px;
+}
 
-<!-- TEMPERATURE LOG -->
-<section class="card log-card">
-  <h2 class="section-title">Morning Temperature</h2>
-  <div class="input-grid input-grid--temp">
-    <div class="field">
-      <input type="date" id="date-temp">
-    </div>
-    <div class="field">
-      <input type="number" id="temp" step="0.01" placeholder="Temperature °C">
-    </div>
-    <button class="log-btn icon-btn" onclick="addTempData()" title="Log Temperature">
-      ＋
-    </button>
-  </div>
-</section>
+html { scroll-behavior: smooth; }
 
-<section class="card log-card">
-  <h2 class="section-title">Symptoms and Period</h2>
-  <div class="input-grid input-grid--symptoms">
-    <div class="field">
-      <input type="date" id="date-sx">
-    </div>
-    <div class="field">
-      <select id="cm" required>
-        <option value="" disabled selected hidden>CM type</option>
-        <option value="dry">Dry</option>
-        <option value="sticky">Sticky</option>
-        <option value="creamy">Creamy</option>
-        <option value="egg-white">Egg-White</option>
-      </select>
-    </div>
-    
-    <div class="field" style="grid-column: 1 / -1;">
-      <div class="checkbox-group">
-        <label class="cb-label"><input type="checkbox" value="migraine" class="symptom-box"> Migraine</label>
-        <label class="cb-label"><input type="checkbox" value="bloating" class="symptom-box"> Bloating</label>
-        <label class="cb-label"><input type="checkbox" value="breast-tenderness" class="symptom-box"> Breast Tenderness</label>
-      </div>
-    </div>
-    
-    <div class="bottom-action-row">
-      <label class="toggle">
-        <input type="checkbox" id="flow">
-        <span class="toggle-slider"></span>
-        <span class="toggle-label">PERIOD</span>
-      </label>
-      
-      <button class="log-btn log-btn--sx icon-btn" onclick="addSymptomsData()" title="Log Symptoms">
-        ＋
-      </button>
-    </div>
-  </div>
-</section>
+body {
+  font-family: 'DM Sans', sans-serif;
+  
+  /* The Blue-to-Purple Gradient covers the whole page */
+  background: linear-gradient(135deg, #4b8cdb 0%, #9b59b6 100%);
+  background-attachment: fixed; /* Locks the gradient in place when scrolling */
+  
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 0 0 60px;
+  overflow-x: hidden;
+}
 
-<!-- BBT CHART -->
-<section class="card chart-card">
-  <h3 class="chart-title">Cycles</h3>
-  <div class="chart-legend">
-    <span class="legend-dot" style="background:#d4768a"></span>Follicular
-    <span class="legend-dot" style="background:#2ed573"></span>Fertile
-    <span class="legend-dot" style="background:#9b59b6"></span>Ovulation
-    <span class="legend-dot" style="background:#8bb6e0"></span>Luteal
-    <span class="legend-dot" style="background:#ff4757"></span>Period
-    <span class="legend-dot legend-diamond" style="background:#222"></span>Migraine
-  </div>
-  <div class="chart-wrap">
-    <canvas id="bbtChart"></canvas>
-  </div>
-</section>
+/* ── HEADER ── */
+header {
+  background: transparent; /* Lets the body gradient show through */
+  padding: 32px 16px 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  display: none; 
+}
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.6rem, 6vw, 3rem);
+  color: #ffffff; /* Crisp white text */
+  letter-spacing: -0.01em;
+  position: relative;
+}
+h1 em { 
+  font-style: italic; 
+  font-weight: 400; 
+}
+.subtitle {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #000000; /* Slightly soft white */
+  margin-top: 6px;
+  position: relative;
+}
 
-<!-- SYMPTOMS CHART -->
-<section class="card chart-card">
-  <h3 class="chart-title">Symptoms</h3>
-  <div id="symptomsTapestry"></div>
-</section>
+/* ── CARDS ── */
+.card {
+  background: rgba(255, 255, 255, 0.25); 
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  
+  border: none; /* 👈 Bye bye cheap borders */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); /* 👈 Deep, rich shadow for floating effect */
 
-<!-- INSIGHTS GRID -->
-<section class="insights-grid">
-  <div class="card insight-card">
-    <h3>Phase Averages</h3>
-    <div class="avg-row">
-      <div class="avg-block">
-        <div class="avg-label">Follicular</div>
-        <div class="avg-val follicular-col" id="avg-fol">--</div>
-        <div class="avg-unit">°C</div>
-      </div>
-      <div class="avg-divider"></div>
-      <div class="avg-block">
-        <div class="avg-label">Luteal</div>
-        <div class="avg-val luteal-col" id="avg-lut">--</div>
-        <div class="avg-unit">°C</div>
-      </div>
-    </div>
-  </div>
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  margin: 16px auto;
+  max-width: 860px;
+  width: calc(100% - 24px);
+}
 
-  <div class="card insight-card">
-    <h3>Ovulation</h3>
-    <div class="ov-status" id="ov-status">Processing…</div>
-    <p id="ov-prediction" class="insight-sub">Waiting for biphasic shift.</p>
-  </div>
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 14px;
+  text-align: center; /* 👈 Add this line */
+}
 
-  <div class="card insight-card">
-    <h3>Cycle Forecast</h3>
-    <div class="forecast-row"><span class="fc-label">Fertile window</span><strong class="fertile-col" id="next-fertile">--</strong></div>
-    <div class="forecast-row"><span class="fc-label">Next ovulation</span><strong class="ov-col" id="next-ovulation">--</strong></div>
-    <div class="forecast-row"><span class="fc-label">Next period</span><strong class="period-col" id="next-period">Not enough data.</strong></div>
-  </div>
-</section>
+/* ── LOG FORMS ── */
+.input-grid {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+}
+.input-grid--temp {
+  /* 1 part Date, 1 part Temp, and exactly 44px for the square button */
+  grid-template-columns: 1fr 1fr 44px; 
+  align-items: center; /* This perfectly centers them vertically now that labels are gone */
+}
 
-<!-- DATA MANAGEMENT -->
-<section class="card data-card">
-  <div class="data-actions">
-    <button class="action-btn export-btn" onclick="exportData()">Export</button>
-    <label class="action-btn import-btn">
-      Import
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
-    </label>
-    <button class="action-btn danger-btn" onclick="clearData()">Clear</button>
-  </div>
-</section>
+/* The new square Icon Button */
+.input-grid--temp .icon-btn {
+  grid-column: auto;
+  width: 44px;
+  height: 44px;
+  min-height: unset;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 1.5rem; /* Makes the + sign nice and clear */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-<footer>
-  <p>Cini. 🌸</p>
-</footer>
+/* Puts the Period toggle and the Log button on the same line */
+.bottom-action-row {
+  grid-column: 1 / -1; /* Stretches across the whole grid */
+  display: flex;
+  justify-content: space-between; /* Pushes toggle left, button right */
+  align-items: center; /* Perfectly centers them vertically */
+  margin-top: 4px;
+}
 
-<script type="module" src="script.js?v=2"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
+/* Re-use the square button sizing we made earlier */
+.bottom-action-row .icon-btn {
+  width: 44px;
+  height: 44px;
+  min-height: unset;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 1.5rem;
+  margin: 0; 
+}
+
+/* 1. Perfect Cross-Card Alignment */
+.input-grid--symptoms {
+  /* Mimics the exact math of the Temperature card */
+  grid-template-columns: 1fr 1fr 44px; 
+}
+
+/* Forces the Symptoms Date box to exactly match the Temperature Date box width */
+.input-grid--symptoms > .field:nth-child(1) {
+  grid-column: 1 / 2;
+}
+
+/* Lets the CM Type box comfortably fill the rest of the row */
+.input-grid--symptoms > .field:nth-child(2) {
+  grid-column: 2 / 4;
+}
+
+/* 2. Gray Dropdown Placeholder Text */
+/* Because we added 'required', the empty placeholder is technically 'invalid' and turns gray */
+select:invalid {
+  color: #888; 
+}
+/* But once you pick a real option, it snaps back to your standard ink color! */
+select option {
+  color: var(--ink); 
+}
+
+.field-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+
+input[type="date"], input[type="number"], select {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  
+  background: rgba(255, 255, 255, 0.3);
+  border: none; /* 👈 Removed border */
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05); /* Soft inner-shadow makes it look indented */
+  
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem; 
+  color: var(--ink);
+  transition: all 0.3s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Make them light up smoothly when you tap them */
+input:focus, select:focus { 
+  outline: none; 
+  background: rgba(255, 255, 255, 0.6); 
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.log-btn {
+  /* Solid white button to pop off the glass */
+  background: rgba(255, 255, 255, 0.9);
+  color: #4b8cdb; /* Blue icon */
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.log-btn:hover { background: #ffffff; transform: translateY(-1px); }
+.log-btn:active { transform: scale(0.96); }
+
+.log-btn--sx {
+  color: #9b59b6; /* Purple icon for the symptoms button */
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: row; 
+  flex-wrap: wrap;     
+  gap: 16px;           
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  
+  /* Inside .checkbox-group */
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.cb-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* Make the checkboxes bigger and match your theme color */
+.symptom-box {
+  width: 20px !important;
+  height: 20px !important;
+  accent-color: var(--rose);
+  cursor: pointer;
+}
+
+/* ── PERIOD TOGGLE ── */
+.field--period {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Prevents awkward stretching from the parent grid */
+}
+.field--period > label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px 0;
+  min-height: 44px; /* Tap target for mobile */
+  user-select: none; /* Prevents annoying text highlighting when tapping */
+}
+.toggle input { 
+  display: none; 
+}
+.toggle-slider {
+  width: 48px;
+  height: 28px;
+  background-color: #d8cacc; /* Made this darker so it doesn't look invisible! */
+  border-radius: 14px;
+  position: relative;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: white;
+  border-radius: 50%;
+  top: 50%; /* Perfect vertical centering formula */
+  transform: translateY(-50%);
+  left: 3px;
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); /* Smoother, snappier slide */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.toggle input:checked + .toggle-slider { 
+  background-color: var(--red); 
+}
+.toggle input:checked + .toggle-slider::after { 
+  transform: translate(20px, -50%); /* Slide right while maintaining vertical center */
+}
+.toggle-label { 
+  font-size: 0.95rem; 
+  color: var(--ink); 
+}
+/* ── CHART TITLE ── */
+.chart-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+/* ── CHART LEGEND ── */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+  align-items: center;
+}
+.legend-dot {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  margin-right: 3px;
+}
+.legend-diamond {
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+/* ── CHARTS ── */
+.chart-wrap {
+  position: relative;
+  height: 280px;
+}
+.chart-wrap--symptoms {
+  height: 200px;
+}
+
+/* ── INSIGHTS ── */
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  max-width: 860px;
+  width: calc(100% - 24px);
+  margin: 0 auto;
+}
+.insights-grid .card { margin: 0; width: 100%; padding: 16px; }
+.insight-card h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.insight-sub { font-size: 0.85rem; color: var(--ink-soft); line-height: 1.6; }
+
+.avg-row { display: flex; align-items: center; }
+.avg-block { flex: 1; text-align: center; padding: 6px 0; }
+.avg-divider { width: 1px; height: 50px; background: var(--border); }
+.avg-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+.avg-val { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 600; line-height: 1.1; }
+.avg-unit { font-size: 0.72rem; color: var(--ink-soft); }
+
+.ov-status { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 600; color: var(--mauve); margin-bottom: 6px; }
+
+.forecast-row { display: flex; flex-direction: column; margin-bottom: 10px; }
+.fc-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft); margin-bottom: 2px; }
+.forecast-row strong { font-size: 0.88rem; }
+
+.follicular-col { color: var(--rose); }
+.luteal-col     { color: var(--blue); }
+.fertile-col    { color: var(--green); }
+.ov-col         { color: var(--mauve); }
+.period-col     { color: var(--red); }
+
+/* ── DATA MANAGEMENT ── */
+.data-actions { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 16px; /* Slightly wider gap looks better when centered */
+  margin-bottom: 12px; 
+  justify-content: center; /* 👈 This pushes all the buttons to the exact center */
+}
+/* Removes the glass and shadow just for the bottom buttons */
+.data-card {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  border: none;
+  padding: 10px 0; /* Shrinks the empty space */
+}
+.action-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: transparent; /* 👈 Removes the button background */
+  border: none; /* 👈 Removes any borders */
+  box-shadow: none;
+  color: #ffffff; /* Make the text white so it pops against the gradient */
+  opacity: 0.8;
+  text-decoration-line: underline;;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.action-btn:hover {
+  background: transparent;
+  opacity: 1;
+}
+
+.export-btn { color: var(--blue); }
+.import-btn { color: var(--blue); }
+.danger-btn { color: var(--blue); }
+.data-note { font-size: 0.78rem; color: var(--blue); }
+
+/* ── FOOTER ── */
+footer {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #000000;
+  padding: 30px 20px 0;
+}
+
+/* ── RESPONSIVE — iPhone 11 (375px wide) and up ── */
+@media (max-width: 430px) {
+  header { padding: 24px 12px 20px; }
+
+  .card { 
+    padding: 16px 14px; 
+    width: calc(100% - 16px);
+    border-radius: 12px;
+    margin: 12px auto;
   }
-</script>
-</body>
-</html>
+
+  /* Keep all 3 items on the same row for mobile! */
+  .input-grid--temp { grid-template-columns: 1fr 1fr 44px; gap: 8px; }
+    
+  /* Prevent the mobile view from trying to stretch our perfect square */
+  .input-grid--temp .icon-btn { 
+    grid-column: auto; 
+    margin-top: 0; 
+  }
+
+  .input-grid--symptoms { grid-template-columns: 1fr 1fr; }
+
+  .chart-wrap { height: 220px; }
+  .chart-wrap--symptoms { height: 170px; }
+
+  .chart-legend { font-size: 0.7rem; gap: 6px 10px; }
+
+  .insights-grid {
+    grid-template-columns: 1fr 1fr;
+    width: calc(100% - 16px);
+    gap: 10px;
+  }
+  .insights-grid .card { padding: 14px 12px; }
+
+  .avg-val { font-size: 1.5rem; }
+  .ov-status { font-size: 1.2rem; }
+  .forecast-row strong { font-size: 0.82rem; }
+  .insight-sub { font-size: 0.8rem; }
+
+  .data-actions { gap: 8px; }
+  .action-btn { font-size: 0.8rem; padding: 9px 12px; }
+}
+
+/* ── Very small screens (< 360px) ── */
+@media (max-width: 360px) {
+  .insights-grid { grid-template-columns: 1fr; }
+  .input-grid--temp { grid-template-columns: 1fr; }
+  .input-grid--symptoms { grid-template-columns: 1fr; }
+}
+
+/* ── TAPESTRY GRID STYLES ── */
+#symptomsTapestry {
+  width: 100%;
+  overflow-x: auto; /* Allows smooth horizontal scrolling on very tiny phones */
+  padding: 10px 0;
+}
+
+.tapestry-grid {
+  display: grid;
+  /* 1 column for names, 11 equal columns for the days */
+  grid-template-columns: minmax(80px, max-content) repeat(11, 1fr);
+  gap: 3px;
+  width: 100%;
+  min-width: 340px; /* Prevents blocks from becoming microscopically thin */
+  align-items: center;
+}
+
+.tapestry-label {
+  text-align: right;
+  padding-right: 12px;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tapestry-header-cell {
+  text-align: center;
+  color: #000000;
+  font-size: 0.65rem;
+  padding-bottom: 5px;
+}
+
+.tapestry-header-cell.day-one {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.tapestry-cell {
+  height: 28px;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+  cursor: default;
+}
+
+.tapestry-cell:hover {
+  opacity: 0.8 !important; /* Slight highlight when touched */
+}
+
+/* Make Dropdown placeholders black */
+select:invalid {
+  color: #000000; 
+}
+/* Make Text/Number input placeholders black */
+input::placeholder {
+  color: #000000;
+  opacity: 1; /* Prevents some browsers from fading it */
+}
