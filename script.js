@@ -310,18 +310,17 @@ function initializeChart() {
 
 function getChartDataStructure() {
   const ctx = getCycleContext();
+  // We declare ovDateObj exactly once here
   const ovDateObj = ctx.ovDay ? new Date(ctx.ovDay) : null;
 
   const labels = cycleData.map(e => new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
   const temps  = cycleData.map(e => e.temp);
 
-  // Fertile window logic:
-  // - If ovulation is confirmed: exactly the 5 days before ovulation (strict, overrides egg-white)
-  // - If no ovulation yet: span from first to last egg-white day as a fallback
-  const ovDateObj = ctx.ovDay ? new Date(ctx.ovDay) : null;
+  // Fertile window dates (Strict 5 days before ovulation)
   const fertileWindowStart = ovDateObj ? new Date(+ovDateObj - 5 * 86400000) : null;
   const fertileWindowEnd   = ovDateObj ? new Date(+ovDateObj - 86400000) : null;
 
+  // Fallback dates (Span of egg-white mucus if ovulation not yet confirmed)
   const ewDates = !ovDateObj
     ? cycleData.filter(e => e.cm === 'egg-white').map(e => e.date).sort()
     : [];
@@ -329,21 +328,35 @@ function getChartDataStructure() {
   const ewEnd   = ewDates.length ? ewDates[ewDates.length - 1] : null;
 
   const pointColors = cycleData.map(e => {
+    const d = new Date(e.date);
+
+    // 1. Period (Red)
     if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#e05555';
+    
+    // 2. Ovulation Day (Purple)
     if (e.date === ctx.ovDay) return '#9b59b6';
+    
+    // 3. Migraines (Black)
     if (e.symptoms && e.symptoms.includes('migraine')) return '#222';
+    
+    // 4. Luteal Phase (Blue)
     const phase = getPhaseForDate(e.date, ctx);
     if (phase === 'luteal') return '#8bb6e0';
-    if (fertileWindowStart && fertileWindowEnd) {
-      const d = new Date(e.date);
+
+    // 5. The Two-Mode Fertile Window Logic (Green)
+    if (ovDateObj) {
+      // MODE 1: Ovulation confirmed -> Strictly color the 5 days before it green
       if (d >= fertileWindowStart && d <= fertileWindowEnd) return '#2ed573';
-      return '#b0836a';
+    } else {
+      // MODE 2: No ovulation yet -> Fall back to egg-white span
+      if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#2ed573';
     }
-    if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#2ed573';
+
+    // 6. Default / Follicular Baseline (Terracotta)
     return '#b0836a';
   });
 
-  const pointRadii = cycleData.map(() => 5); // uniform size for all points
+  const pointRadii = cycleData.map(() => 5); // Uniform size for all points
 
   const pointStyles = cycleData.map(e =>
     (e.symptoms && e.symptoms.includes('migraine')) ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
