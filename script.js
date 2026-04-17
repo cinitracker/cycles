@@ -552,13 +552,13 @@ function calculateInsights() {
     document.getElementById('ov-prediction').textContent = `Shift detected on ${fmt(new Date(ctx.ovDay))}`;
     
   } else {
-    // 2. Waiting for Ovulation (RANGES)
-    document.getElementById('ov-status').textContent = ctx.isDelayed ? 'Delayed' : 'Not yet';
-    document.getElementById('ov-status').style.color = ctx.isDelayed ? '#e05555' : '#ccc';
+    // 2. Waiting for Ovulation (Neutral, Adaptive Ranges)
+    document.getElementById('ov-status').textContent = 'Not yet';
+    document.getElementById('ov-status').style.color = '#ccc';
     document.getElementById('ov-prediction').textContent = 'Watching for biphasic shift.';
 
     if (ctx.ovWinStart && ctx.ovWinEnd) {
-      textOvulation = `${fmt(ctx.ovWinStart)} – ${fmt(ctx.ovWinEnd)}`;
+      textOvulation = `Est. ${fmt(ctx.ovWinStart)} – ${fmt(ctx.ovWinEnd)}`;
       textFertile = `${fmt(ctx.fertileStart)} – ${fmt(ctx.ovWinEnd)}`;
       textPeriod = `Est. ${fmt(ctx.predictedPeriod)}`;
     }
@@ -569,7 +569,7 @@ function calculateInsights() {
   document.getElementById('next-fertile').textContent   = textFertile;
 
   // ... (Keep your existing Migraine pattern logic exactly as it is down here)
-  
+
   // CHANGED: Now looks inside string for migraine pattern
   const migraineEntries = cycleData.filter(e => e.symptoms && e.symptoms.includes('migraine'));
   const symptomEl = document.getElementById('symptom-pattern');
