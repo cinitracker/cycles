@@ -168,24 +168,61 @@ function getCycleContext() {
   const ovDay = detectOvulation();
   const periods = detectPeriods();
   const lastPeriod = periods[periods.length - 1];
-  const prevPeriod = periods[periods.length - 2];
 
-  let cycleLength = 27;
-  if (lastPeriod && prevPeriod) {
-    cycleLength = Math.round((new Date(lastPeriod.start) - new Date(prevPeriod.start)) / 86400000);
+  // 1. LEARN FROM DATA: Calculate personalized cycle average
+  let cycleLength = 33; // Fallback for your first month
+  if (periods.length >= 2) {
+    let totalDays = 0;
+    for (let i = 0; i < periods.length - 1; i++) {
+      totalDays += (new Date(periods[i+1].start) - new Date(periods[i].start)) / 86400000;
+    }
+    cycleLength = Math.round(totalDays / (periods.length - 1));
   }
 
-  let lpLength = 13;
-  if (ovDay && lastPeriod) {
-    lpLength = Math.round((new Date(lastPeriod.start) - new Date(ovDay)) / 86400000);
-  }
-
+  // The Luteal Phase (post-ovulation) is biologically stable, usually ~14 days
+  const lpLength = 14; 
   const periodStart = lastPeriod ? new Date(lastPeriod.start) : null;
-  const predictedPeriod    = periodStart ? new Date(+periodStart + cycleLength * 86400000) : null;
-  const predictedOvulation = periodStart ? new Date(+periodStart + (cycleLength - lpLength) * 86400000) : null;
-  const fertileStart       = predictedOvulation ? new Date(+predictedOvulation - 5 * 86400000) : null;
 
-  return { ovDay, periods, lastPeriod, cycleLength, lpLength, predictedPeriod, predictedOvulation, fertileStart };
+  let isOvulationThisCycle = false;
+  if (ovDay && periodStart && new Date(ovDay) > periodStart) {
+    isOvulationThisCycle = true;
+  }
+
+  // 2. ADAPTIVE RANGES
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  let ovWinStart = null;
+  let ovWinEnd = null;
+  let fertileStart = null;
+  let predictedPeriod = null;
+  let isDelayed = false;
+
+  if (periodStart) {
+    // Find the baseline target date based on your personal average
+    const baseOvulation = new Date(+periodStart + (cycleLength - lpLength) * 86400000);
+    
+    // Create a 5-day predictive window around that baseline
+    ovWinStart = new Date(+baseOvulation - 2 * 86400000);
+    ovWinEnd = new Date(+baseOvulation + 2 * 86400000);
+
+    // 3. SHIFT FORWARD IF MISSED
+    if (!isOvulationThisCycle && today > ovWinEnd) {
+      isDelayed = true;
+      // Push the window forward so it adapts to your delayed cycle
+      ovWinStart = new Date(today);
+      ovWinEnd = new Date(+today + 4 * 86400000); // Spans the next 4 days
+    }
+
+    // Fertile window opens 4 days before the ovulation window starts
+    fertileStart = new Date(+ovWinStart - 4 * 86400000); 
+    predictedPeriod = new Date(+ovWinEnd + lpLength * 86400000);
+  }
+
+  return { 
+    ovDay, isOvulationThisCycle, periods, lastPeriod, cycleLength, lpLength, 
+    ovWinStart, ovWinEnd, fertileStart, predictedPeriod, isDelayed 
+  };
 }
 
 function getPhaseForDate(dateStr, ctx) {
@@ -479,8 +516,11 @@ function updateSymptomsChart() {
 }
 
 // ── INSIGHTS ──────────────────────────────────────────────────────────────────
+// ── INSIGHTS ──────────────────────────────────────────────────────────────────
 function calculateInsights() {
   const ctx = getCycleContext();
+  const today = new Date();
+  today.setHours(0,0,0,0);
 
   const folTemps = ctx.ovDay
     ? cycleData.filter(e => new Date(e.date) <= new Date(ctx.ovDay)).map(e => e.temp)
@@ -493,23 +533,43 @@ function calculateInsights() {
   document.getElementById('avg-fol').textContent = avg(folTemps);
   document.getElementById('avg-lut').textContent = avg(lutTemps);
 
-  if (ctx.ovDay) {
+  // Formatter for clean ranges (e.g., "Apr 18")
+  const fmt = (d) => d ? d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) : '--';
+
+  let textFertile = '--';
+  let textOvulation = '--';
+  let textPeriod = '--';
+
+  if (ctx.isOvulationThisCycle) {
+    // 1. Ovulation Confirmed
+    textOvulation = `Confirmed (${fmt(new Date(ctx.ovDay))})`;
+    textFertile = 'Closed for this cycle';
+    const exactPeriodDate = new Date(new Date(ctx.ovDay).getTime() + (ctx.lpLength * 86400000));
+    textPeriod = `Est. ${fmt(exactPeriodDate)}`;
+    
     document.getElementById('ov-status').textContent = 'Confirmed ✦';
     document.getElementById('ov-status').style.color = '#9b59b6';
-    document.getElementById('ov-prediction').textContent = `Detected around ${ctx.ovDay}`;
+    document.getElementById('ov-prediction').textContent = `Shift detected on ${fmt(new Date(ctx.ovDay))}`;
+    
   } else {
-    document.getElementById('ov-status').textContent = 'Not yet';
-    document.getElementById('ov-status').style.color = '#ccc';
+    // 2. Waiting for Ovulation (RANGES)
+    document.getElementById('ov-status').textContent = ctx.isDelayed ? 'Delayed' : 'Not yet';
+    document.getElementById('ov-status').style.color = ctx.isDelayed ? '#e05555' : '#ccc';
     document.getElementById('ov-prediction').textContent = 'Watching for biphasic shift.';
+
+    if (ctx.ovWinStart && ctx.ovWinEnd) {
+      textOvulation = `${fmt(ctx.ovWinStart)} – ${fmt(ctx.ovWinEnd)}`;
+      textFertile = `${fmt(ctx.fertileStart)} – ${fmt(ctx.ovWinEnd)}`;
+      textPeriod = `Est. ${fmt(ctx.predictedPeriod)}`;
+    }
   }
 
-  const fmt = (d, opts) => d ? d.toLocaleDateString(undefined, opts || { weekday:'short', month:'short', day:'numeric' }) : '--';
-  const shortFmt = d => fmt(d, { month:'short', day:'numeric' });
-  document.getElementById('next-period').textContent    = fmt(ctx.predictedPeriod);
-  document.getElementById('next-ovulation').textContent = fmt(ctx.predictedOvulation);
-  document.getElementById('next-fertile').textContent   = ctx.fertileStart
-    ? `${shortFmt(ctx.fertileStart)} – ${shortFmt(ctx.predictedOvulation)}` : '--';
+  document.getElementById('next-period').textContent    = textPeriod;
+  document.getElementById('next-ovulation').textContent = textOvulation;
+  document.getElementById('next-fertile').textContent   = textFertile;
 
+  // ... (Keep your existing Migraine pattern logic exactly as it is down here)
+  
   // CHANGED: Now looks inside string for migraine pattern
   const migraineEntries = cycleData.filter(e => e.symptoms && e.symptoms.includes('migraine'));
   const symptomEl = document.getElementById('symptom-pattern');
