@@ -315,22 +315,38 @@ function getChartDataStructure() {
   const labels = cycleData.map(e => new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
   const temps  = cycleData.map(e => e.temp);
 
+  // Fertile window logic:
+  // - If ovulation is confirmed: exactly the 5 days before ovulation (strict, overrides egg-white)
+  // - If no ovulation yet: span from first to last egg-white day as a fallback
+  const ovDateObj = ctx.ovDay ? new Date(ctx.ovDay) : null;
+  const fertileWindowStart = ovDateObj ? new Date(+ovDateObj - 5 * 86400000) : null;
+  const fertileWindowEnd   = ovDateObj ? new Date(+ovDateObj - 86400000) : null;
+
+  const ewDates = !ovDateObj
+    ? cycleData.filter(e => e.cm === 'egg-white').map(e => e.date).sort()
+    : [];
+  const ewStart = ewDates.length ? ewDates[0] : null;
+  const ewEnd   = ewDates.length ? ewDates[ewDates.length - 1] : null;
+
   const pointColors = cycleData.map(e => {
     if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#e05555';
     if (e.date === ctx.ovDay) return '#9b59b6';
     if (e.symptoms && e.symptoms.includes('migraine')) return '#222';
     const phase = getPhaseForDate(e.date, ctx);
-    if (phase === 'fertile') return '#2ed573';
     if (phase === 'luteal') return '#8bb6e0';
-    if (e.cm === 'egg-white') return '#2ed573';
-    return '#d4768a';
+    if (fertileWindowStart && fertileWindowEnd) {
+      const d = new Date(e.date);
+      if (d >= fertileWindowStart && d <= fertileWindowEnd) return '#2ed573';
+      return '#b0836a';
+    }
+    if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#2ed573';
+    return '#b0836a';
   });
 
-  const pointRadii = cycleData.map(e =>
-    ((e.flow === true || (typeof e.flow === 'string' && e.flow)) || e.date === ctx.ovDay || (e.symptoms && e.symptoms.includes('migraine')) || e.cm === 'egg-white') ? 7 : 4 // CHANGED
-  );
+  const pointRadii = cycleData.map(() => 5); // uniform size for all points
+
   const pointStyles = cycleData.map(e =>
-    (e.symptoms && e.symptoms.includes('migraine')) ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle' // CHANGED
+    (e.symptoms && e.symptoms.includes('migraine')) ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
   );
 
   return {
