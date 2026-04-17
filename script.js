@@ -318,8 +318,7 @@ function getChartDataStructure() {
   // Fertile window logic:
   // - If ovulation is confirmed: exactly the 5 days before ovulation (strict, overrides egg-white)
   // - If no ovulation yet: span from first to last egg-white day as a fallback
-  
-  // NOTE: The duplicate "const ovDateObj" line was removed here
+  const ovDateObj = ctx.ovDay ? new Date(ctx.ovDay) : null;
   const fertileWindowStart = ovDateObj ? new Date(+ovDateObj - 5 * 86400000) : null;
   const fertileWindowEnd   = ovDateObj ? new Date(+ovDateObj - 86400000) : null;
 
