@@ -140,28 +140,28 @@ window.clearData       = clearData;
 function detectOvulation() {
   const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
   
-  // We now need at least 6 days: 2 before the jump + the 4-day jump itself
   if (validEntries.length < 6) return null;
 
-  // Scan forwards to catch the FIRST time this specific pattern happens
   for (let i = 2; i <= validEntries.length - 4; i++) {
     
-    // 1. Look at the 2 days immediately before the suspected jump
+    // 1. Get the 2 days before the jump and find their average
     const pre1 = validEntries[i - 2].temp;
     const pre2 = validEntries[i - 1].temp;
-    const baselineMax = Math.max(pre1, pre2); // Use the highest of the two to ensure a true jump
+    const baselineAvg = (pre1 + pre2) / 2; 
 
-    // 2. Look at the 4 consecutive days of the jump
+    // 2. Get the 4 consecutive days
     const day1 = validEntries[i].temp;
     const day2 = validEntries[i + 1].temp;
     const day3 = validEntries[i + 2].temp;
     const day4 = validEntries[i + 3].temp;
 
-    // 3. The rule: All 4 days must be strictly higher than the 2 days before them
-    if (day1 > baselineMax && day2 > baselineMax && day3 > baselineMax && day4 > baselineMax) {
+    // 3. The rule: All 4 days must be distinctly higher than the average of the 2 preceding days
+    if (day1 > baselineAvg && day2 > baselineAvg && day3 > baselineAvg && day4 > baselineAvg) {
       
-      // Lock ovulation to the last low day (the day right before the jump started)
-      return validEntries[i - 1].date;
+      // Also ensure the jump started specifically after the last low day
+      if (day1 > pre2) {
+        return validEntries[i - 1].date;
+      }
     }
   }
 
@@ -399,28 +399,28 @@ function getChartDataStructure() {
   const pointColors = cycleData.map(e => {
     const d = new Date(e.date);
 
-    // 1. Period
-    if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#D47A7A';
+    // 1. Period (Matches your new crisp red)
+    if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#E63946';
     
-    // 2. Ovulation Day
-    if (e.date === ctx.ovDay) return '#A88EC8';
+    // 2. Ovulation Day (Matches your new purple)
+    if (e.date === ctx.ovDay) return '#a800ff';
     
-    // 3. Migraines
-    if (e.symptoms && e.symptoms.includes('migraine')) return '#555555';
+    // 3. Migraines (Matches your new dark grey/black)
+    if (e.symptoms && e.symptoms.includes('migraine')) return '#222222';
     
-    // 4. Luteal Phase
+    // 4. Luteal Phase (Matches your new blue)
     const phase = getPhaseForDate(e.date, ctx);
-    if (phase === 'luteal') return '#7AAED4';
+    if (phase === 'luteal') return '#8bb6e0';
 
-    // 5. The Two-Mode Fertile Window Logic
+    // 5. Fertile Window (Matches your new green)
     if (ovDateObj) {
-      if (d >= fertileWindowStart && d <= fertileWindowEnd) return '#7DC4A0';
+      if (d >= fertileWindowStart && d <= fertileWindowEnd) return '#6cbc57';
     } else {
-      if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#7DC4A0';
+      if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#6cbc57';
     }
 
-    // 6. Follicular Baseline
-    return '#E8A07A';
+    // 6. Follicular Baseline (Matches your new yellow/stone)
+    return '#ffe87b';
   });
 
   const pointRadii = cycleData.map(e => {
@@ -475,17 +475,6 @@ function calculateInsights() {
   const ctx = getCycleContext();
   const today = new Date();
   today.setHours(0,0,0,0);
-
-  const folTemps = ctx.ovDay
-    ? cycleData.filter(e => new Date(e.date) <= new Date(ctx.ovDay)).map(e => e.temp)
-    : cycleData.slice(0, Math.floor(cycleData.length / 2)).map(e => e.temp);
-  const lutTemps = (ctx.ovDay && ctx.lastPeriod)
-    ? cycleData.filter(e => new Date(e.date) > new Date(ctx.ovDay) && new Date(e.date) < new Date(ctx.lastPeriod.start)).map(e => e.temp)
-    : [];
-
-  const avg = arr => arr.length ? (arr.reduce((a,b) => a+b,0)/arr.length).toFixed(2) : '--';
-  document.getElementById('avg-fol').textContent = avg(folTemps);
-  document.getElementById('avg-lut').textContent = avg(lutTemps);
 
   // Formatter for clean ranges (e.g., "Apr 18")
   const fmt = (d) => d ? d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) : '--';
