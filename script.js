@@ -133,20 +133,23 @@ function getCycleContext() {
 
 function getPhaseForDate(dateStr, ctx) {
   const d = new Date(dateStr);
-  // Check if period
   for (const p of ctx.periods) {
     if (d >= new Date(p.start) && d <= new Date(p.end)) return 'period';
   }
-  // Check against ALL ovulation days
-  for (const ov of ctx.allOvDays) {
-    const ovD = new Date(ov);
+  // Check against the ovulation date that most recently preceded this day
+  const relevantOv = [...ctx.allOvDays]
+    .filter(ov => new Date(ov) <= d)
+    .sort((a,b) => new Date(b) - new Date(a))[0];
+
+  if (relevantOv) {
+    const ovD = new Date(relevantOv);
+    if (dateStr === relevantOv) return 'ovulation';
+    if (d > ovD) {
+      const nextP = ctx.periods.find(p => new Date(p.start) > ovD);
+      if (!nextP || d < new Date(nextP.start)) return 'luteal';
+    }
     const fStart = new Date(+ovD - 5 * 86400000);
-    if (dateStr === ov) return 'ovulation';
-    if (d >= fStart && d <= ovD) return 'fertile';
-    // Luteal is after ovulation but before the next period
-    const nextPeriod = ctx.periods.find(p => new Date(p.start) > ovD);
-    const endOfLuteal = nextPeriod ? new Date(nextPeriod.start) : new Date(8640000000000000);
-    if (d > ovD && d < endOfLuteal) return 'luteal';
+    if (d >= fStart && d < ovD) return 'fertile';
   }
   return 'follicular';
 }
