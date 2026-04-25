@@ -267,7 +267,6 @@ input::placeholder { color: var(--ink-muted); opacity: 1; }
 
 /* ── CHART AREA ── */
 .chart-wrap { position: relative; height: 280px; }
-.chart-wrap--symptoms { height: 200px; }
 
 /* ── INSIGHTS GRID ── */
 .insights-grid {
@@ -362,7 +361,6 @@ footer {
   .input-grid--temp .icon-btn { grid-column: auto; margin-top: 0; }
   .input-grid--symptoms { grid-template-columns: 1fr 1fr; }
   .chart-wrap { height: 220px; }
-  .chart-wrap--symptoms { height: 170px; }
   .chart-legend { font-size: 0.68rem; gap: 5px 10px; }
   .insights-grid {
     grid-template-columns: 1fr 1fr;
@@ -383,46 +381,6 @@ footer {
   .input-grid--temp { grid-template-columns: 1fr; }
   .input-grid--symptoms { grid-template-columns: 1fr; }
 }
-
-/* ── TAPESTRY ── */
-#symptomsTapestry {
-  width: 100%;
-  overflow-x: auto;
-  padding: 10px 0;
-}
-.tapestry-grid {
-  display: grid;
-  grid-template-columns: minmax(80px, max-content) repeat(11, 1fr);
-  gap: 3px;
-  width: 100%;
-  min-width: 340px;
-  align-items: center;
-}
-.tapestry-label {
-  text-align: right;
-  padding-right: 12px;
-  color: var(--ink-soft);
-  font-size: 0.78rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-.tapestry-header-cell {
-  text-align: center;
-  color: var(--ink-muted);
-  font-size: 0.65rem;
-  padding-bottom: 5px;
-}
-.tapestry-header-cell.day-one {
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-.tapestry-cell {
-  height: 28px;
-  border-radius: 4px;
-  transition: opacity 0.2s ease;
-  cursor: default;
-}
-.tapestry-cell:hover { opacity: 0.75 !important; }
 
 /* Dropdown/input placeholder */
 select:invalid { color: var(--ink-muted); }
