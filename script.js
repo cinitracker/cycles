@@ -323,15 +323,15 @@ function initializeChart() {
       maintainAspectRatio: false,
       scales: {
         x: {
-          title: { display: true, text: 'Date', color: '#6b4f55', font: { family: 'DM Sans' } },
-          ticks: { color: '#111111', font: { family: 'DM Sans', size: 11, weight: '500' }, maxRotation: 45 },
-          grid: { color: 'rgba(0,0,0,0.05)' }
+          title: { display: true, text: 'Date', color: 'rgba(255,255,255,0.55)', font: { family: 'DM Sans' } },
+          ticks: { color: 'rgba(255,255,255,0.7)', font: { family: 'DM Sans', size: 11, weight: '400' }, maxRotation: 45 },
+          grid: { color: 'rgba(255,255,255,0.08)' }
         },
         y: {
-          title: { display: true, text: 'Temp °C', color: '#6b4f55', font: { family: 'DM Sans' } },
+          title: { display: true, text: 'Temp °C', color: 'rgba(255,255,255,0.55)', font: { family: 'DM Sans' } },
           min: 35.5, max: 37.2,
-          ticks: { stepSize: 0.1, color: '#111111', font: { family: 'DM Sans', size: 11, weight: '500' } },
-          grid: { color: 'rgba(0,0,0,0.05)' }
+          ticks: { stepSize: 0.1, color: 'rgba(255,255,255,0.7)', font: { family: 'DM Sans', size: 11, weight: '400' } },
+          grid: { color: 'rgba(255,255,255,0.08)' }
         }
       },
       plugins: {
@@ -351,7 +351,7 @@ function initializeChart() {
         },
         
         tooltip: {
-          backgroundColor: '#2c1f22',
+          backgroundColor: 'rgba(30,20,50,0.85)',
           titleFont: { family: 'DM Sans' },
           bodyFont: { family: 'DM Sans' },
           callbacks: {
@@ -399,30 +399,28 @@ function getChartDataStructure() {
   const pointColors = cycleData.map(e => {
     const d = new Date(e.date);
 
-    // 1. Period (Red)
-    if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#e05555';
+    // 1. Period
+    if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#D47A7A';
     
-    // 2. Ovulation Day (Purple)
-    if (e.date === ctx.ovDay) return '#9b59b6';
+    // 2. Ovulation Day
+    if (e.date === ctx.ovDay) return '#A88EC8';
     
-    // 3. Migraines (Black)
-    if (e.symptoms && e.symptoms.includes('migraine')) return '#222';
+    // 3. Migraines
+    if (e.symptoms && e.symptoms.includes('migraine')) return '#555555';
     
-    // 4. Luteal Phase (Blue)
+    // 4. Luteal Phase
     const phase = getPhaseForDate(e.date, ctx);
-    if (phase === 'luteal') return '#8bb6e0';
+    if (phase === 'luteal') return '#7AAED4';
 
-    // 5. The Two-Mode Fertile Window Logic (Green)
+    // 5. The Two-Mode Fertile Window Logic
     if (ovDateObj) {
-      // MODE 1: Ovulation confirmed -> Strictly color the 5 days before it green
-      if (d >= fertileWindowStart && d <= fertileWindowEnd) return '#2ed573';
+      if (d >= fertileWindowStart && d <= fertileWindowEnd) return '#7DC4A0';
     } else {
-      // MODE 2: No ovulation yet -> Fall back to egg-white span
-      if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#2ed573';
+      if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#7DC4A0';
     }
 
-    // 6. Default / Follicular Baseline (Terracotta)
-    return '#b0836a';
+    // 6. Follicular Baseline
+    return '#E8A07A';
   });
 
   const pointRadii = cycleData.map(() => 5); // Uniform size for all points
@@ -436,7 +434,7 @@ function getChartDataStructure() {
     datasets: [{
       label: 'BBT',
       data: temps,
-      borderColor: 'rgba(201,123,132,0.4)',
+      borderColor: 'rgba(255,255,255,0.35)',
       borderWidth: 2,
       fill: false,
       tension: 0.35,
@@ -529,9 +527,8 @@ function updateSymptomsChart() {
     html += `<div class="tapestry-header-cell ${day === 0 ? 'day-one' : ''}">${day === 0 ? 'Day 1' : day}</div>`;
   }
 
-  // A cohesive color palette using RGB so we can manipulate the opacity
-  // Matches your CSS variables: Rose, Mauve, Blue, Red, Green
-  const colorPalette = ['201, 123, 132', '155, 89, 182', '139, 182, 224', '224, 85, 85', '46, 213, 115'];
+  // Option B palette — muted, readable on gradient background
+  const colorPalette = ['212, 122, 122', '168, 142, 200', '122, 174, 212', '125, 196, 160', '232, 160, 122'];
 
   // Draw the Data Rows (The Symptoms)
   symptomsList.forEach((sym, index) => {
@@ -593,7 +590,7 @@ function calculateInsights() {
     textPeriod = `Est. ${fmt(exactPeriodDate)}`;
     
     document.getElementById('ov-status').textContent = 'Confirmed ✦';
-    document.getElementById('ov-status').style.color = '#9b59b6';
+    document.getElementById('ov-status').style.color = '#A88EC8';
     document.getElementById('ov-prediction').textContent = `Shift detected on ${fmt(new Date(ctx.ovDay))}`;
     
   } else {

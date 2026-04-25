@@ -2,30 +2,38 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --rose:       #c97b84;
-  --rose-light: #f0d0d4;
-  --rose-pale:  #f0f4f8;  
-  --mauve:      #9b59b6;
-  --blue:       #8bb6e0;
-  --green:      #2ed573;
-  --red:        #e05555;
-  --ink:        #2c1f22;
-  --ink-soft:   #6b4f55;
-  --card-bg:    #ffffff;
-  --border:     #ecdcde;
-  --shadow:     0 2px 16px rgba(180,100,110,0.08);
-  --radius:     16px;
+  /* Phase colours — muted, Option B palette */
+  --follicular:  #E8A07A;
+  --fertile:     #7DC4A0;
+  --ovulation:   #A88EC8;
+  --luteal:      #7AAED4;
+  --period-col:  #D47A7A;
+  --migraine:    #555555;
+
+  /* UI */
+  --ink:         #ffffff;
+  --ink-soft:    rgba(255,255,255,0.7);
+  --ink-muted:   rgba(255,255,255,0.5);
+  --card-bg:     rgba(255,255,255,0.18);
+  --card-bg-hover: rgba(255,255,255,0.24);
+  --border:      rgba(255,255,255,0.22);
+  --radius:      16px;
+  --shadow:      0 8px 32px rgba(0,0,0,0.12);
+
+  /* Semantic colours kept for JS references */
+  --rose:        #E8A07A;
+  --mauve:       #A88EC8;
+  --blue:        #7AAED4;
+  --green:       #7DC4A0;
+  --red:         #D47A7A;
 }
 
 html { scroll-behavior: smooth; }
 
 body {
   font-family: 'DM Sans', sans-serif;
-  
-  /* The Blue-to-Purple Gradient covers the whole page */
   background: linear-gradient(135deg, #4b8cdb 0%, #9b59b6 100%);
-  background-attachment: fixed; /* Locks the gradient in place when scrolling */
-  
+  background-attachment: fixed;
   color: var(--ink);
   min-height: 100vh;
   padding: 0 0 60px;
@@ -34,131 +42,86 @@ body {
 
 /* ── HEADER ── */
 header {
-  background: transparent; /* Lets the body gradient show through */
-  padding: 32px 16px 24px;
+  background: transparent;
+  padding: 40px 16px 28px;
   text-align: center;
-  position: relative;
-  overflow: hidden;
 }
-header::before {
-  display: none; 
-}
+
 h1 {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(1.6rem, 6vw, 3rem);
-  color: #ffffff; /* Crisp white text */
-  letter-spacing: -0.01em;
-  position: relative;
-}
-h1 em { 
-  font-style: italic; 
-  font-weight: 400; 
-}
-.subtitle {
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(1.4rem, 5vw, 2.2rem);
+  font-weight: 200;
+  color: #ffffff;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #000000; /* Slightly soft white */
-  margin-top: 6px;
-  position: relative;
+}
+h1 em {
+  font-style: normal;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 0.12em;
 }
 
 /* ── CARDS ── */
 .card {
-  background: rgba(255, 255, 255, 0.25); 
+  background: var(--card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  
-  border: none; /* 👈 Bye bye cheap borders */
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); /* 👈 Deep, rich shadow for floating effect */
-
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   border-radius: var(--radius);
-  padding: 20px 16px;
-  margin: 16px auto;
+  padding: 20px 18px;
+  margin: 14px auto;
   max-width: 860px;
   width: calc(100% - 24px);
 }
 
+/* ── SECTION TITLES ── */
 .section-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.15rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: var(--ink);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
   margin-bottom: 14px;
-  text-align: center; /* 👈 Add this line */
+  text-align: center;
 }
 
 /* ── LOG FORMS ── */
-.input-grid {
-  display: grid;
-  gap: 12px;
-  align-items: end;
-}
+.input-grid { display: grid; gap: 10px; align-items: end; }
 .input-grid--temp {
-  /* 1 part Date, 1 part Temp, and exactly 44px for the square button */
-  grid-template-columns: 1fr 1fr 44px; 
-  align-items: center; /* This perfectly centers them vertically now that labels are gone */
+  grid-template-columns: 1fr 1fr 44px;
+  align-items: center;
 }
-
-/* The new square Icon Button */
 .input-grid--temp .icon-btn {
   grid-column: auto;
-  width: 44px;
-  height: 44px;
-  min-height: unset;
-  padding: 0;
-  border-radius: 10px;
-  font-size: 1.5rem; /* Makes the + sign nice and clear */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Puts the Period toggle and the Log button on the same line */
-.bottom-action-row {
-  grid-column: 1 / -1; /* Stretches across the whole grid */
-  display: flex;
-  justify-content: space-between; /* Pushes toggle left, button right */
-  align-items: center; /* Perfectly centers them vertically */
-  margin-top: 4px;
-}
-
-/* Re-use the square button sizing we made earlier */
-.bottom-action-row .icon-btn {
-  width: 44px;
-  height: 44px;
-  min-height: unset;
-  padding: 0;
+  width: 44px; height: 44px;
+  min-height: unset; padding: 0;
   border-radius: 10px;
   font-size: 1.5rem;
-  margin: 0; 
+  display: flex; align-items: center; justify-content: center;
 }
+.bottom-action-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+.bottom-action-row .icon-btn {
+  width: 44px; height: 44px;
+  min-height: unset; padding: 0;
+  border-radius: 10px;
+  font-size: 1.5rem;
+  margin: 0;
+}
+.input-grid--symptoms { grid-template-columns: 1fr 1fr 44px; }
+.input-grid--symptoms > .field:nth-child(1) { grid-column: 1 / 2; }
+.input-grid--symptoms > .field:nth-child(2) { grid-column: 2 / 4; }
 
-/* 1. Perfect Cross-Card Alignment */
-.input-grid--symptoms {
-  /* Mimics the exact math of the Temperature card */
-  grid-template-columns: 1fr 1fr 44px; 
-}
-
-/* Forces the Symptoms Date box to exactly match the Temperature Date box width */
-.input-grid--symptoms > .field:nth-child(1) {
-  grid-column: 1 / 2;
-}
-
-/* Lets the CM Type box comfortably fill the rest of the row */
-.input-grid--symptoms > .field:nth-child(2) {
-  grid-column: 2 / 4;
-}
-
-/* 2. Gray Dropdown Placeholder Text */
-/* Because we added 'required', the empty placeholder is technically 'invalid' and turns gray */
-select:invalid {
-  color: #888; 
-}
-/* But once you pick a real option, it snaps back to your standard ink color! */
-select option {
-  color: var(--ink); 
-}
+select:invalid { color: var(--ink-muted); }
+select option  { color: #1a1a1a; }
 
 .field-label {
   display: block;
@@ -170,376 +133,290 @@ select option {
   margin-bottom: 5px;
 }
 
-input[type="date"], input[type="number"], select {
+input[type="date"],
+input[type="number"],
+select {
   width: 100%;
   height: 44px;
   padding: 0 12px;
-  box-sizing: border-box;
-  
-  background: rgba(255, 255, 255, 0.3);
-  border: none; /* 👈 Removed border */
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05); /* Soft inner-shadow makes it look indented */
-  
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 10px;
   font-family: 'DM Sans', sans-serif;
-  font-size: 1rem; 
-  color: var(--ink);
-  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  color: #ffffff;
+  transition: background 0.2s ease, border-color 0.2s ease;
   -webkit-appearance: none;
   appearance: none;
 }
-
-/* Make them light up smoothly when you tap them */
-input:focus, select:focus { 
-  outline: none; 
-  background: rgba(255, 255, 255, 0.6); 
-  border-color: rgba(255, 255, 255, 0.9);
+input[type="date"]::placeholder,
+input[type="number"]::placeholder { color: var(--ink-muted); opacity: 1; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.6); cursor: pointer; }
+input:focus, select:focus {
+  outline: none;
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.45);
 }
+select option { color: #1a1a1a; background: #fff; }
 
+/* Placeholder colour for date/number inputs */
+input::placeholder { color: var(--ink-muted); opacity: 1; }
+
+/* ── BUTTONS ── */
 .log-btn {
-  /* Solid white button to pop off the glass */
-  background: rgba(255, 255, 255, 0.9);
-  color: #4b8cdb; /* Blue icon */
-  border: none;
+  background: rgba(255,255,255,0.22);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.28);
   border-radius: 10px;
   cursor: pointer;
   font-weight: 500;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: background 0.2s ease, transform 0.15s ease;
 }
-
-.log-btn:hover { background: #ffffff; transform: translateY(-1px); }
+.log-btn:hover  { background: rgba(255,255,255,0.32); transform: translateY(-1px); }
 .log-btn:active { transform: scale(0.96); }
+.log-btn--sx    { /* same style, period-button is visually identical */ }
 
-.log-btn--sx {
-  color: #9b59b6; /* Purple icon for the symptoms button */
-}
-
+/* ── CHECKBOXES ── */
 .checkbox-group {
   display: flex;
-  flex-direction: row; 
-  flex-wrap: wrap;     
-  gap: 16px;           
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
   margin-top: 8px;
   padding: 12px;
   border-radius: 10px;
-  
-  /* Inside .checkbox-group */
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
 }
-
 .cb-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.95rem;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.92rem;
   color: var(--ink);
   cursor: pointer;
 }
-/* Make the checkboxes bigger and match your theme color */
 .symptom-box {
-  width: 20px !important;
-  height: 20px !important;
-  accent-color: var(--rose);
+  width: 20px !important; height: 20px !important;
+  accent-color: rgba(255,255,255,0.8);
   cursor: pointer;
 }
 
 /* ── PERIOD TOGGLE ── */
-.field--period {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* Prevents awkward stretching from the parent grid */
-}
-.field--period > label {
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin-bottom: 5px;
-}
 .toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  padding: 8px 0;
-  min-height: 44px; /* Tap target for mobile */
-  user-select: none; /* Prevents annoying text highlighting when tapping */
+  display: inline-flex; align-items: center; gap: 12px;
+  cursor: pointer; padding: 8px 0; min-height: 44px;
+  user-select: none;
 }
-.toggle input { 
-  display: none; 
-}
+.toggle input { display: none; }
 .toggle-slider {
-  width: 48px;
-  height: 28px;
-  background-color: #d8cacc; /* Made this darker so it doesn't look invisible! */
-  border-radius: 14px;
-  position: relative;
-  transition: background-color 0.3s ease;
+  width: 48px; height: 28px;
+  background: rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 14px; position: relative;
+  transition: background 0.3s ease;
   flex-shrink: 0;
 }
 .toggle-slider::after {
   content: '';
   position: absolute;
-  width: 22px;
-  height: 22px;
-  background: white;
-  border-radius: 50%;
-  top: 50%; /* Perfect vertical centering formula */
-  transform: translateY(-50%);
+  width: 22px; height: 22px;
+  background: white; border-radius: 50%;
+  top: 50%; transform: translateY(-50%);
   left: 3px;
-  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); /* Smoother, snappier slide */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
-.toggle input:checked + .toggle-slider { 
-  background-color: var(--red); 
-}
-.toggle input:checked + .toggle-slider::after { 
-  transform: translate(20px, -50%); /* Slide right while maintaining vertical center */
-}
-.toggle-label { 
-  font-size: 0.95rem; 
-  color: var(--ink); 
-}
-/* ── CHART TITLE ── */
+.toggle input:checked + .toggle-slider { background: rgba(212,122,122,0.7); border-color: rgba(212,122,122,0.5); }
+.toggle input:checked + .toggle-slider::after { transform: translate(20px, -50%); }
+.toggle-label { font-size: 0.88rem; color: var(--ink-soft); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* ── CHART TITLES ── */
 .chart-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.05rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: var(--ink);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
   margin-bottom: 10px;
 }
 
 /* ── CHART LEGEND ── */
 .chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  font-size: 0.75rem;
+  display: flex; flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 0.73rem;
   color: var(--ink-soft);
   margin-bottom: 14px;
   align-items: center;
 }
 .legend-dot {
   display: inline-block;
-  width: 9px; height: 9px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   margin-right: 3px;
+  opacity: 0.85;
 }
-.legend-diamond {
-  border-radius: 1px;
-  transform: rotate(45deg);
-}
+.legend-diamond { border-radius: 1px; transform: rotate(45deg); }
 
-/* ── CHARTS ── */
-.chart-wrap {
-  position: relative;
-  height: 280px;
-}
-.chart-wrap--symptoms {
-  height: 200px;
-}
+/* ── CHART AREA ── */
+.chart-wrap { position: relative; height: 280px; }
+.chart-wrap--symptoms { height: 200px; }
 
-/* ── INSIGHTS ── */
+/* ── INSIGHTS GRID ── */
 .insights-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
+  gap: 12px;
   max-width: 860px;
   width: calc(100% - 24px);
   margin: 0 auto;
 }
 .insights-grid .card { margin: 0; width: 100%; padding: 16px; }
+
 .insight-card h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: 0.95rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
   margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
 }
+
 .insight-sub { font-size: 0.85rem; color: var(--ink-soft); line-height: 1.6; }
 
 .avg-row { display: flex; align-items: center; }
 .avg-block { flex: 1; text-align: center; padding: 6px 0; }
-.avg-divider { width: 1px; height: 50px; background: var(--border); }
-.avg-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
-.avg-val { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 600; line-height: 1.1; }
-.avg-unit { font-size: 0.72rem; color: var(--ink-soft); }
+.avg-divider { width: 1px; height: 50px; background: rgba(255,255,255,0.2); }
+.avg-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-muted); }
+.avg-val { font-family: 'DM Sans', sans-serif; font-size: 1.8rem; font-weight: 200; line-height: 1.1; }
+.avg-unit { font-size: 0.72rem; color: var(--ink-muted); }
 
-.ov-status { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 600; color: var(--mauve); margin-bottom: 6px; }
+.ov-status { font-family: 'DM Sans', sans-serif; font-size: 1.3rem; font-weight: 300; margin-bottom: 6px; }
 
 .forecast-row { display: flex; flex-direction: column; margin-bottom: 10px; }
-.fc-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft); margin-bottom: 2px; }
-.forecast-row strong { font-size: 0.88rem; }
+.fc-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); margin-bottom: 2px; }
+.forecast-row strong { font-size: 0.88rem; font-weight: 500; }
 
-.follicular-col { color: var(--rose); }
-.luteal-col     { color: var(--blue); }
-.fertile-col    { color: var(--green); }
-.ov-col         { color: var(--mauve); }
-.period-col     { color: var(--red); }
+/* Phase colours used in JS and legend */
+.follicular-col { color: var(--follicular); }
+.luteal-col     { color: var(--luteal); }
+.fertile-col    { color: var(--fertile); }
+.ov-col         { color: var(--ovulation); }
+.period-col     { color: var(--period-col); }
 
 /* ── DATA MANAGEMENT ── */
-.data-actions { 
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 16px; /* Slightly wider gap looks better when centered */
-  margin-bottom: 12px; 
-  justify-content: center; /* 👈 This pushes all the buttons to the exact center */
+.data-actions {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  justify-content: center;
 }
-/* Removes the glass and shadow just for the bottom buttons */
 .data-card {
   background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
-  border: none;
-  padding: 10px 0; /* Shrinks the empty space */
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: none; border: none;
+  padding: 8px 0;
 }
 .action-btn {
   padding: 10px 16px;
   border-radius: 8px;
-  background: transparent; /* 👈 Removes the button background */
-  border: none; /* 👈 Removes any borders */
-  box-shadow: none;
-  color: #ffffff; /* Make the text white so it pops against the gradient */
-  opacity: 0.8;
-  text-decoration-line: underline;;
+  background: transparent; border: none; box-shadow: none;
+  color: var(--ink-soft);
+  text-decoration: underline;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  transition: opacity 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
   min-height: 44px;
+  opacity: 0.75;
 }
-.action-btn:hover {
-  background: transparent;
-  opacity: 1;
-}
-
-.export-btn { color: var(--blue); }
-.import-btn { color: var(--blue); }
-.danger-btn { color: var(--blue); }
-.data-note { font-size: 0.78rem; color: var(--blue); }
+.action-btn:hover { opacity: 1; }
+.export-btn, .import-btn, .danger-btn { color: var(--ink-soft); }
 
 /* ── FOOTER ── */
 footer {
   text-align: center;
   font-size: 0.75rem;
-  color: #000000;
+  color: var(--ink-muted);
   padding: 30px 20px 0;
+  letter-spacing: 0.08em;
 }
 
-/* ── RESPONSIVE — iPhone 11 (375px wide) and up ── */
+/* ── RESPONSIVE — iPhone 12 (390px) ── */
 @media (max-width: 430px) {
-  header { padding: 24px 12px 20px; }
-
-  .card { 
-    padding: 16px 14px; 
+  header { padding: 28px 12px 20px; }
+  .card {
+    padding: 16px 14px;
     width: calc(100% - 16px);
     border-radius: 12px;
-    margin: 12px auto;
+    margin: 10px auto;
   }
-
-  /* Keep all 3 items on the same row for mobile! */
   .input-grid--temp { grid-template-columns: 1fr 1fr 44px; gap: 8px; }
-    
-  /* Prevent the mobile view from trying to stretch our perfect square */
-  .input-grid--temp .icon-btn { 
-    grid-column: auto; 
-    margin-top: 0; 
-  }
-
+  .input-grid--temp .icon-btn { grid-column: auto; margin-top: 0; }
   .input-grid--symptoms { grid-template-columns: 1fr 1fr; }
-
   .chart-wrap { height: 220px; }
   .chart-wrap--symptoms { height: 170px; }
-
-  .chart-legend { font-size: 0.7rem; gap: 6px 10px; }
-
+  .chart-legend { font-size: 0.68rem; gap: 5px 10px; }
   .insights-grid {
     grid-template-columns: 1fr 1fr;
     width: calc(100% - 16px);
     gap: 10px;
   }
   .insights-grid .card { padding: 14px 12px; }
-
   .avg-val { font-size: 1.5rem; }
-  .ov-status { font-size: 1.2rem; }
+  .ov-status { font-size: 1.1rem; }
   .forecast-row strong { font-size: 0.82rem; }
   .insight-sub { font-size: 0.8rem; }
-
   .data-actions { gap: 8px; }
   .action-btn { font-size: 0.8rem; padding: 9px 12px; }
 }
 
-/* ── Very small screens (< 360px) ── */
 @media (max-width: 360px) {
   .insights-grid { grid-template-columns: 1fr; }
   .input-grid--temp { grid-template-columns: 1fr; }
   .input-grid--symptoms { grid-template-columns: 1fr; }
 }
 
-/* ── TAPESTRY GRID STYLES ── */
+/* ── TAPESTRY ── */
 #symptomsTapestry {
   width: 100%;
-  overflow-x: auto; /* Allows smooth horizontal scrolling on very tiny phones */
+  overflow-x: auto;
   padding: 10px 0;
 }
-
 .tapestry-grid {
   display: grid;
-  /* 1 column for names, 11 equal columns for the days */
   grid-template-columns: minmax(80px, max-content) repeat(11, 1fr);
   gap: 3px;
   width: 100%;
-  min-width: 340px; /* Prevents blocks from becoming microscopically thin */
+  min-width: 340px;
   align-items: center;
 }
-
 .tapestry-label {
   text-align: right;
   padding-right: 12px;
   color: var(--ink-soft);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 500;
   white-space: nowrap;
 }
-
 .tapestry-header-cell {
   text-align: center;
-  color: #000000;
+  color: var(--ink-muted);
   font-size: 0.65rem;
   padding-bottom: 5px;
 }
-
 .tapestry-header-cell.day-one {
   font-weight: 700;
-  color: var(--ink);
+  color: var(--ink-soft);
 }
-
 .tapestry-cell {
   height: 28px;
   border-radius: 4px;
   transition: opacity 0.2s ease;
   cursor: default;
 }
+.tapestry-cell:hover { opacity: 0.75 !important; }
 
-.tapestry-cell:hover {
-  opacity: 0.8 !important; /* Slight highlight when touched */
-}
-
-/* Make Dropdown placeholders black */
-select:invalid {
-  color: #000000; 
-}
-/* Make Text/Number input placeholders black */
-input::placeholder {
-  color: #000000;
-  opacity: 1; /* Prevents some browsers from fading it */
-}
+/* Dropdown/input placeholder */
+select:invalid { color: var(--ink-muted); }
+input::placeholder { color: var(--ink-muted); opacity: 1; }
