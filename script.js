@@ -432,8 +432,12 @@ function getChartDataStructure() {
     return '#E8A07A';
   });
 
-  const pointRadii = cycleData.map(() => 5); // Uniform size for all points
-
+  const pointRadii = cycleData.map(e => {
+    if (e.date === ctx.ovDay) return 7; // The Ovulation Star
+    if (e.symptoms && e.symptoms.includes('migraine')) return 6; // The Migraine Diamond
+    return 5; // Standard circles for everything else
+  });
+  
   const pointStyles = cycleData.map(e =>
     (e.symptoms && e.symptoms.includes('migraine')) ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
   );

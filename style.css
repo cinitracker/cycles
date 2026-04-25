@@ -258,6 +258,13 @@ input::placeholder { color: var(--ink-muted); opacity: 1; }
 }
 .legend-diamond { border-radius: 1px; transform: rotate(45deg); }
 
+/* Creates a sharp, 8-pointed star (sunburst) shape */
+.legend-star {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 57% 28%, 85% 15%, 72% 43%, 100% 50%, 72% 57%, 85% 85%, 57% 72%, 50% 100%, 43% 72%, 15% 85%, 28% 57%, 0% 50%, 28% 43%, 15% 15%, 43% 28%);
+  transform: scale(1.1); /* Gently scaled to match the diamond */
+}
+
 /* ── CHART AREA ── */
 .chart-wrap { position: relative; height: 280px; }
 .chart-wrap--symptoms { height: 200px; }
