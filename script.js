@@ -138,15 +138,34 @@ window.clearData       = clearData;
 
 // ── CYCLE ANALYSIS HELPERS ────────────────────────────────────────────────────
 function detectOvulation() {
-  if (cycleData.length < 6) return null;
-  const temps = cycleData.map(e => e.temp);
-  for (let i = 6; i < temps.length; i++) {
-    const baseline = temps.slice(i - 6, i).reduce((a, b) => a + b, 0) / 6;
-    if (temps[i] - baseline >= 0.18 && (i + 1 >= temps.length || temps[i + 1] > baseline + 0.1)) {
-      return cycleData[i - 1].date;
+  // 1. Filter out days where no temperature was logged
+  const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
+
+  // Need at least 6 low days + 3 high days to run the math
+  if (validEntries.length < 9) return null;
+
+  let confirmedOvulationDate = null;
+
+  // 2. Search FORWARD to catch the exact start of your 4-day spike
+  for (let i = 6; i <= validEntries.length - 3; i++) {
+    
+    // 3. Simple Average Baseline (No dropping highest temps)
+    const prev6 = validEntries.slice(i - 6, i).map(e => e.temp);
+    const baseline = prev6.reduce((sum, val) => sum + val, 0) / 6;
+
+    const t1 = validEntries[i].temp;
+    const t2 = validEntries[i + 1].temp;
+    const t3 = validEntries[i + 2].temp;
+
+    // 4. The Shift: 3 days above the average baseline
+    if (t1 > baseline && t2 > baseline && t3 >= baseline + 0.15) {
+      
+      // Ovulation happens the day before the spike starts
+      confirmedOvulationDate = validEntries[i - 1].date;
     }
   }
-  return null;
+
+  return confirmedOvulationDate;
 }
 
 function detectPeriods() {
@@ -294,7 +313,6 @@ function getCycleDay(dateStr, ctx) {
   return "Day " + (daysSinceStart + 1); 
 }
 
-// ── BBT CHART ─────────────────────────────────────────────────────────────────
 function initializeChart() {
   const ctx = document.getElementById('bbtChart').getContext('2d');
   bbtChart = new Chart(ctx, {
@@ -318,6 +336,20 @@ function initializeChart() {
       },
       plugins: {
         legend: { display: false },
+        
+        // ── NEW ZOOM & PAN CONFIG ──
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x', // Only swipe horizontally
+          },
+          zoom: {
+            wheel: { enabled: true }, // Scroll wheel on desktop
+            pinch: { enabled: true }, // Pinch-to-zoom on mobile
+            mode: 'x',
+          }
+        },
+        
         tooltip: {
           backgroundColor: '#2c1f22',
           titleFont: { family: 'DM Sans' },
@@ -418,7 +450,20 @@ function getChartDataStructure() {
 }
 
 function updateChartData() {
-  bbtChart.data = getChartDataStructure();
+  const newData = getChartDataStructure();
+  bbtChart.data = newData;
+
+  // Force the chart window to only show the last 10 entries by default
+  const totalPoints = newData.labels.length;
+  if (totalPoints > 10) {
+    bbtChart.options.scales.x.min = totalPoints - 10;
+    bbtChart.options.scales.x.max = totalPoints - 1;
+  } else {
+    // If you have less than 10 days logged, just show everything
+    delete bbtChart.options.scales.x.min;
+    delete bbtChart.options.scales.x.max;
+  }
+
   bbtChart.update();
 }
 
