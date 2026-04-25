@@ -138,39 +138,24 @@ window.clearData       = clearData;
 
 // ── CYCLE ANALYSIS HELPERS ────────────────────────────────────────────────────
 function detectOvulation() {
-  // 1. Filter to days with a logged temperature
   const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
-
-  // Need at least 6 low days + 3 high days
+  
   if (validEntries.length < 9) return null;
 
-  // 2. Search forward — stop at the FIRST confirmed biphasic shift (no overwriting)
   for (let i = 6; i <= validEntries.length - 3; i++) {
+    // 1. SIMPLE AVERAGE: Just the average of the 6 preceding days
+    const prev6 = validEntries.slice(i - 6, i);
+    const baseline = prev6.reduce((sum, e) => sum + e.temp, 0) / 6;
 
-    // 3. Baseline = average of 6 days before the candidate rise
-    const prev6 = validEntries.slice(i - 6, i).map(e => e.temp);
-    const baseline = prev6.reduce((sum, val) => sum + val, 0) / 6;
+    const day1 = validEntries[i].temp;
+    const day2 = validEntries[i + 1].temp;
+    const day3 = validEntries[i + 2].temp;
 
-    const t1 = validEntries[i].temp;
-    const t2 = validEntries[i + 1].temp;
-    const t3 = validEntries[i + 2].temp;
-
-    // 4. Confirmed shift: all 3 days above baseline, 3rd at least +0.15
-    if (t1 > baseline && t2 > baseline && t3 >= baseline + 0.15) {
-
-      // 5. Refine with mucus: look for the last egg-white day in the
-      //    4 days before the temperature rise — that is the most accurate
-      //    ovulation marker. Fall back to the last low-temp day (i-1).
-      const riseDate = new Date(validEntries[i].date);
-      const windowStart = new Date(riseDate.getTime() - 4 * 86400000);
-
-      const mucusPeak = cycleData
-        .filter(e => e.cm === 'egg-white')
-        .filter(e => { const d = new Date(e.date); return d >= windowStart && d < riseDate; })
-        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-
-      // Return immediately — do not let later noise re-trigger the shift
-      return mucusPeak ? mucusPeak.date : validEntries[i - 1].date;
+    // 2. THE SHIFT: The very first time 3 days stay above that baseline
+    if (day1 > baseline && day2 > baseline && day3 > baseline) {
+      
+      // Ovulation is locked to the last low day (the day before the rise)
+      return validEntries[i - 1].date;
     }
   }
 
@@ -437,7 +422,7 @@ function getChartDataStructure() {
     if (e.symptoms && e.symptoms.includes('migraine')) return 6; // The Migraine Diamond
     return 5; // Standard circles for everything else
   });
-  
+
   const pointStyles = cycleData.map(e =>
     (e.symptoms && e.symptoms.includes('migraine')) ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
   );
@@ -478,99 +463,7 @@ function updateChartData() {
   bbtChart.update();
 }
 
-// ── SYMPTOMS CHART (CSS GRID TAPESTRY) ─────────────────────────────────────────
 
-function initializeSymptomsChart() {
-  // We no longer need Chart.js for this, so we just pass the baton to the update function
-  updateSymptomsChart();
-}
-
-function updateSymptomsChart() {
-  const container = document.getElementById('symptomsTapestry');
-  if (!container) return; 
-
-  const ctx = getCycleContext();
-  const totalCycles = Math.max(1, ctx.periods.length);
-
-  // 1. Find all unique symptoms
-  const uniqueSymptoms = new Set();
-  cycleData.forEach(e => {
-    if (e.symptoms) {
-      e.symptoms.split(', ').forEach(s => {
-        if (s.trim() !== '' && s !== 'period') uniqueSymptoms.add(s.trim());
-      });
-    }
-  });
-  const symptomsList = Array.from(uniqueSymptoms);
-
-  // 2. Count occurrences (-7 to +3)
-  const counts = {};
-  symptomsList.forEach(sym => {
-    counts[sym] = {};
-    for (let i = -7; i <= 3; i++) counts[sym][i] = 0;
-  });
-
-  for (const entry of cycleData) {
-    if (!entry.symptoms) continue;
-
-    let minDiff = Infinity;
-    for (const p of ctx.periods) {
-      const pStart = new Date(p.start);
-      const eDate = new Date(entry.date);
-      const diffDays = Math.round((eDate - pStart) / 86400000);
-      if (Math.abs(diffDays) < Math.abs(minDiff)) minDiff = diffDays;
-    }
-
-    if (minDiff !== Infinity && minDiff >= -7 && minDiff <= 3) {
-      entry.symptoms.split(', ').forEach(sym => {
-        const cleanSym = sym.trim();
-        if (counts[cleanSym] && counts[cleanSym][minDiff] !== undefined) {
-          counts[cleanSym][minDiff]++;
-        }
-      });
-    }
-  }
-
-  // 3. Build the Grid HTML dynamically
-  let html = `<div class="tapestry-grid">`;
-
-  // Draw the Header Row (The Days)
-  html += `<div class="tapestry-label" style="opacity: 0;">Day</div>`; // Invisible placeholder for layout
-  for (let day = -7; day <= 3; day++) {
-    html += `<div class="tapestry-header-cell ${day === 0 ? 'day-one' : ''}">${day === 0 ? 'Day 1' : day}</div>`;
-  }
-
-  // Option B palette — muted, readable on gradient background
-  const colorPalette = ['212, 122, 122', '168, 142, 200', '122, 174, 212', '125, 196, 160', '232, 160, 122'];
-
-  // Draw the Data Rows (The Symptoms)
-  symptomsList.forEach((sym, index) => {
-    const rgb = colorPalette[index % colorPalette.length];
-    const displayName = sym.charAt(0).toUpperCase() + sym.slice(1);
-
-    // Symptom Name Label
-    html += `<div class="tapestry-label">${displayName}</div>`;
-
-    // The Color Blocks
-    for (let day = -7; day <= 3; day++) {
-      const count = counts[sym][day];
-      const prob = count > 0 ? Math.round((count / totalCycles) * 100) : 0;
-      
-      // Minimum 20% opacity so single occurrences are still visible
-      let alpha = 0;
-      if (count > 0) alpha = Math.max(0.2, prob / 100);
-
-      html += `<div class="tapestry-cell" style="background-color: rgba(${rgb}, ${alpha});" title="${displayName}: ${prob}% frequency"></div>`;
-    }
-  });
-
-  html += `</div>`;
-  
-  // Inject the HTML into the page
-  container.innerHTML = html;
-}
-
-// ── INSIGHTS ──────────────────────────────────────────────────────────────────
 // ── INSIGHTS ──────────────────────────────────────────────────────────────────
 function calculateInsights() {
   const ctx = getCycleContext();
@@ -651,11 +544,9 @@ window.onload = function () {
   document.getElementById('date-temp').valueAsDate = today;
   document.getElementById('date-sx').valueAsDate = today;
   initializeChart();
-  initializeSymptomsChart();
   // Always refresh from whatever data has arrived by now
   if (cycleData.length > 0) {
     updateChartData();
-    updateSymptomsChart();
   }
   calculateInsights();
 };
