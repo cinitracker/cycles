@@ -140,21 +140,27 @@ window.clearData       = clearData;
 function detectOvulation() {
   const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
   
-  if (validEntries.length < 9) return null;
+  // We now need at least 6 days: 2 before the jump + the 4-day jump itself
+  if (validEntries.length < 6) return null;
 
-  for (let i = 6; i <= validEntries.length - 3; i++) {
-    // 1. SIMPLE AVERAGE: Just the average of the 6 preceding days
-    const prev6 = validEntries.slice(i - 6, i);
-    const baseline = prev6.reduce((sum, e) => sum + e.temp, 0) / 6;
+  // Scan forwards to catch the FIRST time this specific pattern happens
+  for (let i = 2; i <= validEntries.length - 4; i++) {
+    
+    // 1. Look at the 2 days immediately before the suspected jump
+    const pre1 = validEntries[i - 2].temp;
+    const pre2 = validEntries[i - 1].temp;
+    const baselineMax = Math.max(pre1, pre2); // Use the highest of the two to ensure a true jump
 
+    // 2. Look at the 4 consecutive days of the jump
     const day1 = validEntries[i].temp;
     const day2 = validEntries[i + 1].temp;
     const day3 = validEntries[i + 2].temp;
+    const day4 = validEntries[i + 3].temp;
 
-    // 2. THE SHIFT: The very first time 3 days stay above that baseline
-    if (day1 > baseline && day2 > baseline && day3 > baseline) {
+    // 3. The rule: All 4 days must be strictly higher than the 2 days before them
+    if (day1 > baselineMax && day2 > baselineMax && day3 > baselineMax && day4 > baselineMax) {
       
-      // Ovulation is locked to the last low day (the day before the rise)
+      // Lock ovulation to the last low day (the day right before the jump started)
       return validEntries[i - 1].date;
     }
   }

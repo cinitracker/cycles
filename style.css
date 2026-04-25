@@ -3,9 +3,9 @@
 
 :root {
   /* Phase colours — muted, Option B palette */
-  --follicular:  #E8A07A;
-  --fertile:     #7DC4A0;
-  --ovulation:   #9b59b6;
+  --follicular:  #ffe87b;
+  --fertile:     #6cbc57;
+  --ovulation:   #a800ff;
   --luteal:      #8bb6e0;
   --period-col:  #E63946; /* Changed to a bright, punchy red */
   --migraine:    #222222;
@@ -21,10 +21,10 @@
   --shadow:      0 8px 32px rgba(0,0,0,0.12);
 
   /* Semantic colours kept for JS references */
-  --rose:        #E8A07A;
-  --mauve:       #9b59b6;
+  --yellow:      #ffe87b;
+  --mauve:       #a800ff;
   --blue:        #8bb6e0;
-  --green:       #7DC4A0;
+  --green:       #6cbc57;
   --red:         #E63946;
 }
 
