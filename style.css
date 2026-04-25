@@ -304,12 +304,13 @@ input::placeholder { color: var(--ink-muted); opacity: 1; }
 .fc-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); margin-bottom: 2px; }
 .forecast-row strong { font-size: 0.88rem; font-weight: 500; }
 
-/* Phase colours used in JS and legend */
-.follicular-col { color: var(--follicular); }
-.luteal-col     { color: var(--luteal); }
-.fertile-col    { color: var(--fertile); }
-.ov-col         { color: var(--ovulation); }
-.period-col     { color: var(--period-col); }
+/* Classes to link the legend dots to your root variables */
+.bg-follicular { background-color: var(--follicular); }
+.bg-fertile    { background-color: var(--fertile); }
+.bg-ovulation  { background-color: var(--ovulation); }
+.bg-luteal     { background-color: var(--luteal); }
+.bg-period     { background-color: var(--period-col); }
+.bg-migraine   { background-color: var(--migraine); }
 
 /* ── DATA MANAGEMENT ── */
 .data-actions {

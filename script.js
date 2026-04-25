@@ -376,6 +376,10 @@ function initializeChart() {
     }
   });
 }
+// Helper to read colors directly from CSS variables
+function getCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 
 function getChartDataStructure() {
   const ctx = getCycleContext();
@@ -396,32 +400,40 @@ function getChartDataStructure() {
   const ewStart = ewDates.length ? ewDates[0] : null;
   const ewEnd   = ewDates.length ? ewDates[ewDates.length - 1] : null;
 
-  const pointColors = cycleData.map(e => {
-    const d = new Date(e.date);
+// Grab the exact colors from style.css
+const colPeriod = getCssVar('--period-col');
+const colOvulation = getCssVar('--ovulation');
+const colMigraine = getCssVar('--migraine');
+const colLuteal = getCssVar('--luteal');
+const colFertile = getCssVar('--fertile');
+const colFollicular = getCssVar('--follicular');
 
-    // 1. Period (Matches your new crisp red)
-    if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return '#E63946';
-    
-    // 2. Ovulation Day (Matches your new purple)
-    if (e.date === ctx.ovDay) return '#a800ff';
-    
-    // 3. Migraines (Matches your new dark grey/black)
-    if (e.symptoms && e.symptoms.includes('migraine')) return '#222222';
-    
-    // 4. Luteal Phase (Matches your new blue)
-    const phase = getPhaseForDate(e.date, ctx);
-    if (phase === 'luteal') return '#8bb6e0';
+const pointColors = cycleData.map(e => {
+  const d = new Date(e.date);
 
-    // 5. Fertile Window (Matches your new green)
-    if (ovDateObj) {
-      if (d >= fertileWindowStart && d <= fertileWindowEnd) return '#6cbc57';
-    } else {
-      if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return '#6cbc57';
-    }
+  // 1. Period
+  if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return colPeriod;
+  
+  // 2. Ovulation Day
+  if (e.date === ctx.ovDay) return colOvulation;
+  
+  // 3. Migraines
+  if (e.symptoms && e.symptoms.includes('migraine')) return colMigraine;
+  
+  // 4. Luteal Phase
+  const phase = getPhaseForDate(e.date, ctx);
+  if (phase === 'luteal') return colLuteal;
 
-    // 6. Follicular Baseline (Matches your new yellow/stone)
-    return '#ffe87b';
-  });
+  // 5. Fertile Window
+  if (ovDateObj) {
+    if (d >= fertileWindowStart && d <= fertileWindowEnd) return colFertile;
+  } else {
+    if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return colFertile;
+  }
+
+  // 6. Follicular Baseline
+  return colFollicular;
+});
 
   const pointRadii = cycleData.map(e => {
     if (e.date === ctx.ovDay) return 7; // The Ovulation Star
