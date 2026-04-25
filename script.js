@@ -16,163 +16,75 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const entriesCol = collection(db, 'cycle_entries');
 
-// ── STATE ────────────────────────────────────────────────────────────────────
 let cycleData = [];
 let bbtChart;
-let symptomsChart;
 
-// ── REAL-TIME CLOUD SYNC ──────────────────────────────────────────────────────
 onSnapshot(entriesCol, (snapshot) => {
   cycleData = [];
   snapshot.forEach(doc => cycleData.push(doc.data()));
   cycleData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  // THE FIX: We removed "&& symptomsChart" so it no longer waits for the old graph
   if (bbtChart) {
     updateChartData();
     calculateInsights();
-    updateSymptomsChart();
   }
 });
 
-// ── DATA ENTRY: TEMPERATURE ───────────────────────────────────────────────────
+// ── DATA ENTRY ───────────────────────────────────────────────────────────────
 async function addTempData() {
   const dateInput = document.getElementById('date-temp').value;
   const tempInput = parseFloat(document.getElementById('temp').value);
-
-  if (!dateInput || isNaN(tempInput)) {
-    alert('Please enter both a date and a temperature.');
-    return;
-  }
-
+  if (!dateInput || isNaN(tempInput)) return alert('Please enter date and temp.');
   const entryRef = doc(db, 'cycle_entries', dateInput);
   const existing = await getDoc(entryRef);
   const base = existing.exists() ? existing.data() : { cm: '', symptoms: '', flow: false };
-
-  await setDoc(entryRef, {
-    ...base,
-    date: dateInput,
-    temp: tempInput,
-  });
-
+  await setDoc(entryRef, { ...base, date: dateInput, temp: tempInput });
   document.getElementById('temp').value = '';
 }
 
-// ── DATA ENTRY: SYMPTOMS & MUCUS ─────────────────────────────────────────────
 async function addSymptomsData() {
   const dateInput = document.getElementById('date-sx').value;
   const cmInput   = document.getElementById('cm').value;
   const flowInput = document.getElementById('flow').checked;
-
-  // NEW LOGIC: Find all checked boxes, grab their values, and join with a comma
   const checkedBoxes = document.querySelectorAll('.symptom-box:checked');
   const sympInput = Array.from(checkedBoxes).map(box => box.value).join(', ');
 
-  if (!dateInput) {
-    alert('Please select a date.');
-    return;
-  }
-
+  if (!dateInput) return alert('Please select a date.');
   const entryRef = doc(db, 'cycle_entries', dateInput);
   const existing = await getDoc(entryRef);
   const base = existing.exists() ? existing.data() : { temp: null };
-
-  await setDoc(entryRef, {
-    ...base,
-    date: dateInput,
-    cm: cmInput,
-    symptoms: sympInput,
-    flow: flowInput,
-  });
-
-  // CLEAR THE FORM
+  await setDoc(entryRef, { ...base, date: dateInput, cm: cmInput, symptoms: sympInput, flow: flowInput });
   document.getElementById('cm').value = '';
   document.getElementById('flow').checked = false;
-  document.querySelectorAll('.symptom-box').forEach(box => box.checked = false); // Uncheck all boxes
+  document.querySelectorAll('.symptom-box').forEach(box => box.checked = false);
 }
 
-// ── DATA MANAGEMENT ───────────────────────────────────────────────────────────
-function exportData() {
-  const blob = new Blob([JSON.stringify(cycleData, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `ctracker-backup-${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-}
-
-async function importData(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const imported = JSON.parse(e.target.result);
-      if (!Array.isArray(imported)) throw new Error('Invalid format');
-      const batch = writeBatch(db);
-      imported.forEach(entry => {
-        const docRef = doc(db, 'cycle_entries', entry.date);
-        batch.set(docRef, entry);
-      });
-      await batch.commit();
-      alert(`Successfully uploaded ${imported.length} entries to your cloud!`);
-    } catch {
-      alert('Could not read file. Make sure it is a valid JSON export.');
-    }
-  };
-  reader.readAsText(file);
-}
-
-async function clearData() {
-  if (!confirm('Clear ALL data from your cloud? Export a backup first!')) return;
-  const snap = await getDocs(entriesCol);
-  const batch = writeBatch(db);
-  snap.forEach(d => batch.delete(d.ref));
-  await batch.commit();
-}
-
-window.addTempData     = addTempData;
-window.addSymptomsData = addSymptomsData;
-window.exportData      = exportData;
-window.importData      = importData;
-window.clearData       = clearData;
-
+// ── DETECTION ENGINES ─────────────────────────────────────────────────────────
 function detectOvulation() {
-  // 1. MANUAL OVERRIDE CHECK
-  // Look for any entry where you manually checked the "ovulation-manual" box
-  const manualEntry = cycleData.find(e => e.symptoms && e.symptoms.includes('ovulation-manual'));
-  if (manualEntry) {
-    return manualEntry.date;
-  }
-
-  // 2. AUTOMATIC MATH (The "3 over 3" Rule)
-  const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
-  if (validEntries.length < 6) return null;
-
-  for (let i = 3; i <= validEntries.length - 3; i++) {
-    const pre1 = validEntries[i - 3].temp;
-    const pre2 = validEntries[i - 2].temp;
-    const pre3 = validEntries[i - 1].temp;
-    const coverline = Math.max(pre1, pre2, pre3);
-
-    const d1 = validEntries[i].temp;
-    const d2 = validEntries[i + 1].temp;
-    const d3 = validEntries[i + 2].temp;
-
-    if (d1 > coverline && d2 > coverline && d3 > coverline) {
-      return validEntries[i - 1].date;
+  const allOvDays = [];
+  // 1. Manual Tags
+  cycleData.forEach(e => {
+    if (e.symptoms && e.symptoms.includes('ovulation-manual')) allOvDays.push(e.date);
+  });
+  // 2. Math (3 over 3 Rule)
+  const valid = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
+  for (let i = 3; i <= valid.length - 3; i++) {
+    const baseline = Math.max(valid[i-3].temp, valid[i-2].temp, valid[i-1].temp);
+    if (valid[i].temp > baseline && valid[i+1].temp > baseline && valid[i+2].temp > baseline) {
+      const d = valid[i-1].date;
+      if (!allOvDays.includes(d)) allOvDays.push(d);
     }
   }
-
-  return null;
+  return allOvDays;
 }
 
 function detectPeriods() {
   const periods = [];
-  let inPeriod = false;
-  let start = null;
+  let inPeriod = false, start = null;
   for (const e of cycleData) {
-    if ((e.flow === true || (typeof e.flow === 'string' && e.flow)) && !inPeriod) { inPeriod = true; start = e.date; }
-    else if (!e.flow && inPeriod) {
+    const isBleeding = (e.flow === true || (typeof e.flow === 'string' && e.flow));
+    if (isBleeding && !inPeriod) { inPeriod = true; start = e.date; }
+    else if (!isBleeding && inPeriod) {
       periods.push({ start, end: cycleData[cycleData.indexOf(e) - 1]?.date || start });
       inPeriod = false;
     }
@@ -181,13 +93,14 @@ function detectPeriods() {
   return periods;
 }
 
+// ── CONTEXT & PHASES ──────────────────────────────────────────────────────────
 function getCycleContext() {
-  const ovDay = detectOvulation();
+  const allOvDays = detectOvulation();
   const periods = detectPeriods();
   const lastPeriod = periods[periods.length - 1];
+  const ovDay = allOvDays.length > 0 ? [...allOvDays].sort().reverse()[0] : null;
 
-  // 1. LEARN FROM DATA: Calculate personalized cycle average
-  let cycleLength = 33; // Fallback for your first month
+  let cycleLength = 33; 
   if (periods.length >= 2) {
     let totalDays = 0;
     for (let i = 0; i < periods.length - 1; i++) {
@@ -196,362 +109,128 @@ function getCycleContext() {
     cycleLength = Math.round(totalDays / (periods.length - 1));
   }
 
-  // The Luteal Phase (post-ovulation) is biologically stable, usually ~14 days
   const lpLength = 14; 
-  const periodStart = lastPeriod ? new Date(lastPeriod.start) : null;
+  const pStart = lastPeriod ? new Date(lastPeriod.start) : null;
+  const isOvThisCycle = (ovDay && pStart && new Date(ovDay) > pStart);
 
-  let isOvulationThisCycle = false;
-  if (ovDay && periodStart && new Date(ovDay) > periodStart) {
-    isOvulationThisCycle = true;
-  }
+  const today = new Date(); today.setHours(0,0,0,0);
+  let ovWinStart = null, ovWinEnd = null, fertileStart = null, predictedPeriod = null;
 
-  // 2. ADAPTIVE RANGES
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  let ovWinStart = null;
-  let ovWinEnd = null;
-  let fertileStart = null;
-  let predictedPeriod = null;
-  let isDelayed = false;
-
-  if (periodStart) {
-    // Find the baseline target date based on your personal average
-    const baseOvulation = new Date(+periodStart + (cycleLength - lpLength) * 86400000);
-    
-    // Create a 5-day predictive window around that baseline
-    ovWinStart = new Date(+baseOvulation - 2 * 86400000);
-    ovWinEnd = new Date(+baseOvulation + 2 * 86400000);
-
-    // 3. SHIFT FORWARD IF MISSED
-    if (!isOvulationThisCycle && today > ovWinEnd) {
-      isDelayed = true;
-      // Push the window forward so it adapts to your delayed cycle
+  if (pStart) {
+    const baseOv = new Date(+pStart + (cycleLength - lpLength) * 86400000);
+    ovWinStart = new Date(+baseOv - 2 * 86400000);
+    ovWinEnd = new Date(+baseOv + 2 * 86400000);
+    if (!isOvThisCycle && today > ovWinEnd) {
       ovWinStart = new Date(today);
-      ovWinEnd = new Date(+today + 4 * 86400000); // Spans the next 4 days
+      ovWinEnd = new Date(+today + 4 * 86400000);
     }
-
-    // Fertile window opens 4 days before the ovulation window starts
     fertileStart = new Date(+ovWinStart - 4 * 86400000); 
     predictedPeriod = new Date(+ovWinEnd + lpLength * 86400000);
   }
 
-  return { 
-    ovDay, isOvulationThisCycle, periods, lastPeriod, cycleLength, lpLength, 
-    ovWinStart, ovWinEnd, fertileStart, predictedPeriod, isDelayed 
-  };
+  return { ovDay, allOvDays, periods, lastPeriod, cycleLength, lpLength, ovWinStart, ovWinEnd, fertileStart, predictedPeriod, isOvThisCycle };
 }
 
 function getPhaseForDate(dateStr, ctx) {
   const d = new Date(dateStr);
-  const ovDate = ctx.ovDay ? new Date(ctx.ovDay) : null;
-  const fertileStart = ovDate ? new Date(+ovDate - 5 * 86400000) : null;
-
-  // Check if in a period first
+  // Check if period
   for (const p of ctx.periods) {
-    const ps = new Date(p.start);
-    const pe = new Date(p.end);
-    if (d >= ps && d <= pe) return 'period';
+    if (d >= new Date(p.start) && d <= new Date(p.end)) return 'period';
   }
-
-  // Find the most recent period start before this date
-  const lastPeriodBeforeDate = [...ctx.periods]
-    .filter(p => new Date(p.start) <= d)
-    .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
-
-  // If ovulation happened BEFORE the most recent period, it belongs to the
-  // previous cycle — this date is in a new cycle → follicular
-  if (ovDate && lastPeriodBeforeDate && ovDate < new Date(lastPeriodBeforeDate.start)) {
-    return 'follicular';
+  // Check against ALL ovulation days
+  for (const ov of ctx.allOvDays) {
+    const ovD = new Date(ov);
+    const fStart = new Date(+ovD - 5 * 86400000);
+    if (dateStr === ov) return 'ovulation';
+    if (d >= fStart && d <= ovD) return 'fertile';
+    // Luteal is after ovulation but before the next period
+    const nextPeriod = ctx.periods.find(p => new Date(p.start) > ovD);
+    const endOfLuteal = nextPeriod ? new Date(nextPeriod.start) : new Date(8640000000000000);
+    if (d > ovD && d < endOfLuteal) return 'luteal';
   }
-
-  if (ovDate && dateStr === ctx.ovDay) return 'ovulation';
-  if (ovDate && fertileStart && d >= fertileStart && d <= ovDate) return 'fertile';
-  if (ovDate && d > ovDate) return 'luteal';
   return 'follicular';
 }
 
-
-// ── CYCLE DAY CALCULATOR ──────────────────────────────────────────────────────
-// Returns "Day X" where Day 1 = second day of period.
-// The first day of bleeding belongs to the PREVIOUS cycle.
-function getCycleDay(dateStr, ctx) {
-  const d = new Date(dateStr);
-
-  // If you haven't logged any periods at all, we can't calculate a cycle day
-  if (!ctx.periods || ctx.periods.length === 0) {
-    return "Log a period first";
-  }
-
-  // 1. Define "Day 1" for all cycles as the SECOND day of the period (+24 hours)
-  const cycleStarts = ctx.periods.map(p => {
-    const pStart = new Date(p.start);
-    return new Date(pStart.getTime() + 86400000); 
-  });
-
-  // 2. Find the most recent "Day 1" that happened on or before our target date
-  const startsBeforeDate = cycleStarts
-    .filter(start => start <= d)
-    .sort((a, b) => b - a);
-
-  // 3. If no "Day 1" happened yet, we are in the baseline cycle you manually defined
-  if (startsBeforeDate.length === 0) {
-    const firstPeriodStart = new Date(ctx.periods[0].start);
-    const daysBeforeFirstPeriod = Math.round((firstPeriodStart - d) / 86400000);
-    
-    // You stated the first period's start date was Day 33. 
-    // This counts backwards for all dates before it.
-    return "Day " + (33 - daysBeforeFirstPeriod);
-  }
-
-  // 4. If we are inside a tracked cycle, count normally from its Day 1
-  const cycleStart = startsBeforeDate[0];
-  const daysSinceStart = Math.round((d - cycleStart) / 86400000);
-  
-  return "Day " + (daysSinceStart + 1); 
-}
-
-function initializeChart() {
-  const ctx = document.getElementById('bbtChart').getContext('2d');
-  bbtChart = new Chart(ctx, {
-    type: 'line',
-    data: getChartDataStructure(),
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          title: { display: true, text: 'Date', color: 'rgba(255,255,255,0.55)', font: { family: 'DM Sans' } },
-          ticks: { color: 'rgba(255,255,255,0.7)', font: { family: 'DM Sans', size: 11, weight: '400' }, maxRotation: 45 },
-          grid: { color: 'rgba(255,255,255,0.08)' }
-        },
-        y: {
-          title: { display: true, text: 'Temp °C', color: 'rgba(255,255,255,0.55)', font: { family: 'DM Sans' } },
-          min: 35.5, max: 37.2,
-          ticks: { stepSize: 0.1, color: 'rgba(255,255,255,0.7)', font: { family: 'DM Sans', size: 11, weight: '400' } },
-          grid: { color: 'rgba(255,255,255,0.08)' }
-        }
-      },
-      plugins: {
-        legend: { display: false },
-        
-        // ── NEW ZOOM & PAN CONFIG ──
-        zoom: {
-          pan: {
-            enabled: true,
-            mode: 'x', // Only swipe horizontally
-          },
-          zoom: {
-            wheel: { enabled: true }, // Scroll wheel on desktop
-            pinch: { enabled: true }, // Pinch-to-zoom on mobile
-            mode: 'x',
-          }
-        },
-        
-        tooltip: {
-          backgroundColor: 'rgba(30,20,50,0.85)',
-          titleFont: { family: 'DM Sans' },
-          bodyFont: { family: 'DM Sans' },
-          callbacks: {
-            title: ctx => {
-              const e = cycleData[ctx[0].dataIndex];
-              if (!e) return '';
-              const cycleCtx = getCycleContext();
-              const day = getCycleDay(e.date, cycleCtx);
-              return `${e.date}  ·  Cycle Day ${day}`;
-            },
-            label: ctx => {
-              const e = cycleData[ctx.dataIndex];
-              let parts = [`Temp: ${e.temp}°C`];
-              if (e.flow === true || (typeof e.flow === 'string' && e.flow)) parts.push('🔴 Period');
-              if (e.cm)       parts.push(`CM: ${e.cm}`);
-              if (e.symptoms) parts.push(`Symptoms: ${e.symptoms}`);
-              return parts;
-            }
-          }
-        }
-      }
-    }
-  });
-}
-// Helper to read colors directly from CSS variables
-function getCssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
+// ── CHART ────────────────────────────────────────────────────────────────────
+function getCssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 function getChartDataStructure() {
   const ctx = getCycleContext();
-  // We declare ovDateObj exactly once here
-  const ovDateObj = ctx.ovDay ? new Date(ctx.ovDay) : null;
-
-  const labels = cycleData.map(e => new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-  const temps  = cycleData.map(e => e.temp);
-
-  // Fertile window dates (Strict 5 days before ovulation)
-  const fertileWindowStart = ovDateObj ? new Date(+ovDateObj - 5 * 86400000) : null;
-  const fertileWindowEnd   = ovDateObj ? new Date(+ovDateObj - 86400000) : null;
-
-  // Fallback dates (Span of egg-white mucus if ovulation not yet confirmed)
-  const ewDates = !ovDateObj
-    ? cycleData.filter(e => e.cm === 'egg-white').map(e => e.date).sort()
-    : [];
-  const ewStart = ewDates.length ? ewDates[0] : null;
-  const ewEnd   = ewDates.length ? ewDates[ewDates.length - 1] : null;
-
-// Grab the exact colors from style.css
-const colPeriod = getCssVar('--period-col');
-const colOvulation = getCssVar('--ovulation');
-const colMigraine = getCssVar('--migraine');
-const colLuteal = getCssVar('--luteal');
-const colFertile = getCssVar('--fertile');
-const colFollicular = getCssVar('--follicular');
-
-const pointColors = cycleData.map(e => {
-  const d = new Date(e.date);
-
-  // 1. Period
-  if (e.flow === true || (typeof e.flow === 'string' && e.flow)) return colPeriod;
-  
-  // 2. Ovulation Day
-  if (e.date === ctx.ovDay) return colOvulation;
-  
-  // 3. Migraines
-  if (e.symptoms && e.symptoms.includes('migraine')) return colMigraine;
-  
-  // 4. Luteal Phase
-  const phase = getPhaseForDate(e.date, ctx);
-  if (phase === 'luteal') return colLuteal;
-
-  // 5. Fertile Window
-  if (ovDateObj) {
-    if (d >= fertileWindowStart && d <= fertileWindowEnd) return colFertile;
-  } else {
-    if (ewStart && ewEnd && e.date >= ewStart && e.date <= ewEnd) return colFertile;
-  }
-
-  // 6. Follicular Baseline
-  return colFollicular;
-});
-
-  const pointRadii = cycleData.map(e => {
-    if (e.date === ctx.ovDay) return 7; // The Ovulation Star
-    if (e.symptoms && e.symptoms.includes('migraine')) return 6; // The Migraine Diamond
-    return 5; // Standard circles for everything else
-  });
-
-  const pointStyles = cycleData.map(e =>
-    (e.symptoms && e.symptoms.includes('migraine')) ? 'rectRot' : e.date === ctx.ovDay ? 'star' : 'circle'
-  );
+  const allOv = ctx.allOvDays;
+  const colPeriod = getCssVar('--period-col'), colOvulation = getCssVar('--ovulation'), colMigraine = getCssVar('--migraine');
+  const colLuteal = getCssVar('--luteal'), colFertile = getCssVar('--fertile'), colFollicular = getCssVar('--follicular');
 
   return {
-    labels,
+    labels: cycleData.map(e => new Date(e.date).toLocaleDateString(undefined, { month:'short', day:'numeric' })),
     datasets: [{
       label: 'BBT',
-      data: temps,
-      borderColor: 'rgba(255,255,255,0.35)',
-      borderWidth: 2,
-      fill: false,
-      tension: 0.35,
-      pointBackgroundColor: pointColors,
-      pointBorderColor: pointColors,
-      pointRadius: pointRadii,
-      pointStyle: pointStyles,
-      spanGaps: true
+      data: cycleData.map(e => e.temp),
+      borderColor: 'rgba(255,255,255,0.35)', borderWidth: 2, tension: 0.35, spanGaps: true,
+      pointBackgroundColor: cycleData.map(e => {
+        if (e.flow || (typeof e.flow === 'string' && e.flow)) return colPeriod;
+        if (allOv.includes(e.date)) return colOvulation;
+        if (e.symptoms?.includes('migraine')) return colMigraine;
+        const ph = getPhaseForDate(e.date, ctx);
+        if (ph === 'luteal') return colLuteal;
+        if (ph === 'fertile') return colFertile;
+        return colFollicular;
+      }),
+      pointRadius: cycleData.map(e => allOv.includes(e.date) ? 7 : (e.symptoms?.includes('migraine') ? 6 : 5)),
+      pointStyle: cycleData.map(e => e.symptoms?.includes('migraine') ? 'rectRot' : (allOv.includes(e.date) ? 'star' : 'circle'))
     }]
   };
 }
 
 function updateChartData() {
-  const newData = getChartDataStructure();
-  bbtChart.data = newData;
-
-  // Force the chart window to only show the last 10 entries by default
-  const totalPoints = newData.labels.length;
-  if (totalPoints > 10) {
-    bbtChart.options.scales.x.min = totalPoints - 10;
-    bbtChart.options.scales.x.max = totalPoints - 1;
-  } else {
-    // If you have less than 10 days logged, just show everything
-    delete bbtChart.options.scales.x.min;
-    delete bbtChart.options.scales.x.max;
-  }
-
+  bbtChart.data = getChartDataStructure();
+  const len = bbtChart.data.labels.length;
+  if (len > 10) { bbtChart.options.scales.x.min = len - 10; bbtChart.options.scales.x.max = len - 1; }
   bbtChart.update();
 }
 
+function initializeChart() {
+  const el = document.getElementById('bbtChart').getContext('2d');
+  bbtChart = new Chart(el, {
+    type: 'line', data: getChartDataStructure(),
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+        y: { min: 35.5, max: 37.2, ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+      },
+      plugins: { legend: { display: false }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { pinch: { enabled: true }, mode: 'x' } } }
+    }
+  });
+}
 
 // ── INSIGHTS ──────────────────────────────────────────────────────────────────
 function calculateInsights() {
   const ctx = getCycleContext();
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  // Formatter for clean ranges (e.g., "Apr 18")
   const fmt = (d) => d ? d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) : '--';
-
-  let textFertile = '--';
-  let textOvulation = '--';
-  let textPeriod = '--';
-
-  if (ctx.isOvulationThisCycle) {
-    // 1. Ovulation Confirmed
-    textOvulation = `Confirmed (${fmt(new Date(ctx.ovDay))})`;
-    textFertile = 'Closed for this cycle';
-    const exactPeriodDate = new Date(new Date(ctx.ovDay).getTime() + (ctx.lpLength * 86400000));
-    textPeriod = `Est. ${fmt(exactPeriodDate)}`;
-    
+  
+  if (ctx.isOvThisCycle) {
     document.getElementById('ov-status').textContent = 'Confirmed ✦';
-    document.getElementById('ov-status').style.color = '#A88EC8';
+    document.getElementById('ov-status').style.color = getCssVar('--ovulation');
     document.getElementById('ov-prediction').textContent = `Shift detected on ${fmt(new Date(ctx.ovDay))}`;
-    
+    document.getElementById('next-ovulation').textContent = `Confirmed (${fmt(new Date(ctx.ovDay))})`;
+    document.getElementById('next-fertile').textContent = 'Closed for this cycle';
+    document.getElementById('next-period').textContent = `Est. ${fmt(new Date(new Date(ctx.ovDay).getTime() + (ctx.lpLength * 86400000)))}`;
   } else {
-    // 2. Waiting for Ovulation (Neutral, Adaptive Ranges)
     document.getElementById('ov-status').textContent = 'Not yet';
     document.getElementById('ov-status').style.color = '#ccc';
     document.getElementById('ov-prediction').textContent = 'Watching for biphasic shift.';
-
-    if (ctx.ovWinStart && ctx.ovWinEnd) {
-      textOvulation = `Est. ${fmt(ctx.ovWinStart)} – ${fmt(ctx.ovWinEnd)}`;
-      textFertile = `${fmt(ctx.fertileStart)} – ${fmt(ctx.ovWinEnd)}`;
-      textPeriod = `Est. ${fmt(ctx.predictedPeriod)}`;
-    }
-  }
-
-  document.getElementById('next-period').textContent    = textPeriod;
-  document.getElementById('next-ovulation').textContent = textOvulation;
-  document.getElementById('next-fertile').textContent   = textFertile;
-
-  // ... (Keep your existing Migraine pattern logic exactly as it is down here)
-
-  // CHANGED: Now looks inside string for migraine pattern
-  const migraineEntries = cycleData.filter(e => e.symptoms && e.symptoms.includes('migraine'));
-  const symptomEl = document.getElementById('symptom-pattern');
-  if (symptomEl) {
-    if (migraineEntries.length > 0 && ctx.lastPeriod) {
-      const daysBefore = migraineEntries
-        .map(e => Math.round((new Date(ctx.lastPeriod.start) - new Date(e.date)) / 86400000))
-        .filter(d => d >= 0 && d <= 5);
-      if (daysBefore.length) {
-        const avgNum = (daysBefore.reduce((a,b) => a+b,0) / daysBefore.length).toFixed(0);
-        symptomEl.innerHTML = `🧠 <strong>Pattern detected.</strong> Your migraines tend to appear ~${avgNum} day${avgNum==1?'':'s'} before your period.`;
-      } else {
-        symptomEl.textContent = 'Log more data to see migraine patterns.';
-      }
-    } else {
-      symptomEl.textContent = 'Log more data to see migraine patterns.';
-    }
+    document.getElementById('next-ovulation').textContent = ctx.ovWinStart ? `Est. ${fmt(ctx.ovWinStart)} – ${fmt(ctx.ovWinEnd)}` : '--';
+    document.getElementById('next-fertile').textContent = ctx.fertileStart ? `${fmt(ctx.fertileStart)} – ${fmt(ctx.ovWinEnd)}` : '--';
+    document.getElementById('next-period').textContent = ctx.predictedPeriod ? `Est. ${fmt(ctx.predictedPeriod)}` : '--';
   }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-window.onload = function () {
-  const today = new Date();
-  document.getElementById('date-temp').valueAsDate = today;
-  document.getElementById('date-sx').valueAsDate = today;
+window.onload = () => {
+  document.getElementById('date-temp').valueAsDate = new Date();
+  document.getElementById('date-sx').valueAsDate = new Date();
   initializeChart();
-  // Always refresh from whatever data has arrived by now
-  if (cycleData.length > 0) {
-    updateChartData();
-  }
-  calculateInsights();
+  if (cycleData.length > 0) { updateChartData(); calculateInsights(); }
 };
+
+window.addTempData = addTempData; window.addSymptomsData = addSymptomsData;
