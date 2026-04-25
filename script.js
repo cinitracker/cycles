@@ -137,30 +137,28 @@ window.importData      = importData;
 window.clearData       = clearData;
 
 function detectOvulation() {
-  const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
+  // 1. MANUAL OVERRIDE CHECK
+  // Look for any entry where you manually checked the "ovulation-manual" box
+  const manualEntry = cycleData.find(e => e.symptoms && e.symptoms.includes('ovulation-manual'));
+  if (manualEntry) {
+    return manualEntry.date;
+  }
 
-  // We strictly require 3 baseline days + 3 elevated days (6 days total) to avoid false positives
+  // 2. AUTOMATIC MATH (The "3 over 3" Rule)
+  const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
   if (validEntries.length < 6) return null;
 
-  // Scan forwards to find the FIRST true 3-day shift
   for (let i = 3; i <= validEntries.length - 3; i++) {
-    
-    // 1. Establish the baseline using the MAX of the 3 preceding days. 
-    // This ignores older erratic data, but sets a strict "coverline" for the jump.
     const pre1 = validEntries[i - 3].temp;
     const pre2 = validEntries[i - 2].temp;
     const pre3 = validEntries[i - 1].temp;
     const coverline = Math.max(pre1, pre2, pre3);
 
-    // 2. Get the next 3 consecutive days
-    const day1 = validEntries[i].temp;
-    const day2 = validEntries[i + 1].temp;
-    const day3 = validEntries[i + 2].temp;
+    const d1 = validEntries[i].temp;
+    const d2 = validEntries[i + 1].temp;
+    const d3 = validEntries[i + 2].temp;
 
-    // 3. The Clinical Rule: All 3 days must be strictly higher than the coverline
-    if (day1 > coverline && day2 > coverline && day3 > coverline) {
-      
-      // Lock ovulation to the last low day (the day right before the shift)
+    if (d1 > coverline && d2 > coverline && d3 > coverline) {
       return validEntries[i - 1].date;
     }
   }
