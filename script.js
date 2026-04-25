@@ -16,9 +16,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const entriesCol = collection(db, 'cycle_entries');
 
+// ── STATE ────────────────────────────────────────────────────────────────────
 let cycleData = [];
 let bbtChart;
 
+// ── REAL-TIME CLOUD SYNC ──────────────────────────────────────────────────────
 onSnapshot(entriesCol, (snapshot) => {
   cycleData = [];
   snapshot.forEach(doc => cycleData.push(doc.data()));
@@ -35,9 +37,11 @@ async function addTempData() {
   const dateInput = document.getElementById('date-temp').value;
   const tempInput = parseFloat(document.getElementById('temp').value);
   if (!dateInput || isNaN(tempInput)) return alert('Please enter date and temp.');
+  
   const entryRef = doc(db, 'cycle_entries', dateInput);
   const existing = await getDoc(entryRef);
   const base = existing.exists() ? existing.data() : { cm: '', symptoms: '', flow: false };
+  
   await setDoc(entryRef, { ...base, date: dateInput, temp: tempInput });
   document.getElementById('temp').value = '';
 }
@@ -50,9 +54,11 @@ async function addSymptomsData() {
   const sympInput = Array.from(checkedBoxes).map(box => box.value).join(', ');
 
   if (!dateInput) return alert('Please select a date.');
+  
   const entryRef = doc(db, 'cycle_entries', dateInput);
   const existing = await getDoc(entryRef);
   const base = existing.exists() ? existing.data() : { temp: null };
+  
   await setDoc(entryRef, { ...base, date: dateInput, cm: cmInput, symptoms: sympInput, flow: flowInput });
   document.getElementById('cm').value = '';
   document.getElementById('flow').checked = false;
@@ -64,7 +70,9 @@ function detectOvulation() {
   const allOvDays = [];
   // 1. Manual Tags
   cycleData.forEach(e => {
-    if (e.symptoms && e.symptoms.includes('ovulation-manual')) allOvDays.push(e.date);
+    if (e.symptoms && e.symptoms.includes('ovulation-manual')) {
+      allOvDays.push(e.date);
+    }
   });
   // 2. Math (3 over 3 Rule)
   const valid = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
@@ -128,15 +136,16 @@ function getCycleContext() {
     predictedPeriod = new Date(+ovWinEnd + lpLength * 86400000);
   }
 
-  return { ovDay, allOvDays, periods, lastPeriod, cycleLength, lpLength, ovWinStart, ovWinEnd, fertileStart, predictedPeriod, isOvThisCycle };
+  return { ovDay, allOvDays, periods, lastPeriod, lpLength, ovWinStart, ovWinEnd, fertileStart, predictedPeriod, isOvThisCycle };
 }
 
 function getPhaseForDate(dateStr, ctx) {
   const d = new Date(dateStr);
+  // 1. Check if the date is within a period
   for (const p of ctx.periods) {
     if (d >= new Date(p.start) && d <= new Date(p.end)) return 'period';
   }
-  // Check against the ovulation date that most recently preceded this day
+  // 2. Find the ovulation date that most recently preceded this day
   const relevantOv = [...ctx.allOvDays]
     .filter(ov => new Date(ov) <= d)
     .sort((a,b) => new Date(b) - new Date(a))[0];
@@ -145,6 +154,7 @@ function getPhaseForDate(dateStr, ctx) {
     const ovD = new Date(relevantOv);
     if (dateStr === relevantOv) return 'ovulation';
     if (d > ovD) {
+      // Find the next period start after this specific ovulation
       const nextP = ctx.periods.find(p => new Date(p.start) > ovD);
       if (!nextP || d < new Date(nextP.start)) return 'luteal';
     }
@@ -160,8 +170,12 @@ function getCssVar(name) { return getComputedStyle(document.documentElement).get
 function getChartDataStructure() {
   const ctx = getCycleContext();
   const allOv = ctx.allOvDays;
-  const colPeriod = getCssVar('--period-col'), colOvulation = getCssVar('--ovulation'), colMigraine = getCssVar('--migraine');
-  const colLuteal = getCssVar('--luteal'), colFertile = getCssVar('--fertile'), colFollicular = getCssVar('--follicular');
+  const colPeriod = getCssVar('--period-col');
+  const colOvulation = getCssVar('--ovulation');
+  const colMigraine = getCssVar('--migraine');
+  const colLuteal = getCssVar('--luteal');
+  const colFertile = getCssVar('--fertile');
+  const colFollicular = getCssVar('--follicular');
 
   return {
     labels: cycleData.map(e => new Date(e.date).toLocaleDateString(undefined, { month:'short', day:'numeric' })),
@@ -185,9 +199,13 @@ function getChartDataStructure() {
 }
 
 function updateChartData() {
+  if (!bbtChart) return;
   bbtChart.data = getChartDataStructure();
   const len = bbtChart.data.labels.length;
-  if (len > 10) { bbtChart.options.scales.x.min = len - 10; bbtChart.options.scales.x.max = len - 1; }
+  if (len > 10) { 
+    bbtChart.options.scales.x.min = len - 10; 
+    bbtChart.options.scales.x.max = len - 1; 
+  }
   bbtChart.update();
 }
 
@@ -201,7 +219,10 @@ function initializeChart() {
         x: { ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
         y: { min: 35.5, max: 37.2, ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
       },
-      plugins: { legend: { display: false }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { pinch: { enabled: true }, mode: 'x' } } }
+      plugins: { 
+        legend: { display: false }, 
+        zoom: { pan: { enabled: true, mode: 'x' }, zoom: { pinch: { enabled: true }, mode: 'x' } } 
+      }
     }
   });
 }
@@ -224,16 +245,4 @@ function calculateInsights() {
     document.getElementById('ov-prediction').textContent = 'Watching for biphasic shift.';
     document.getElementById('next-ovulation').textContent = ctx.ovWinStart ? `Est. ${fmt(ctx.ovWinStart)} – ${fmt(ctx.ovWinEnd)}` : '--';
     document.getElementById('next-fertile').textContent = ctx.fertileStart ? `${fmt(ctx.fertileStart)} – ${fmt(ctx.ovWinEnd)}` : '--';
-    document.getElementById('next-period').textContent = ctx.predictedPeriod ? `Est. ${fmt(ctx.predictedPeriod)}` : '--';
-  }
-}
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
-window.onload = () => {
-  document.getElementById('date-temp').valueAsDate = new Date();
-  document.getElementById('date-sx').valueAsDate = new Date();
-  initializeChart();
-  if (cycleData.length > 0) { updateChartData(); calculateInsights(); }
-};
-
-window.addTempData = addTempData; window.addSymptomsData = addSymptomsData;
+    document.getElementById('next-period').textContent = ctx.predictedPeriod ? `Est. ${fmt(ctx.
