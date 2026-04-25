@@ -136,32 +136,32 @@ window.exportData      = exportData;
 window.importData      = importData;
 window.clearData       = clearData;
 
-// ── CYCLE ANALYSIS HELPERS ────────────────────────────────────────────────────
 function detectOvulation() {
   const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
-  
+
+  // We strictly require 3 baseline days + 3 elevated days (6 days total) to avoid false positives
   if (validEntries.length < 6) return null;
 
-  for (let i = 2; i <= validEntries.length - 4; i++) {
+  // Scan forwards to find the FIRST true 3-day shift
+  for (let i = 3; i <= validEntries.length - 3; i++) {
     
-    // 1. Get the 2 days before the jump and find their average
-    const pre1 = validEntries[i - 2].temp;
-    const pre2 = validEntries[i - 1].temp;
-    const baselineAvg = (pre1 + pre2) / 2; 
+    // 1. Establish the baseline using the MAX of the 3 preceding days. 
+    // This ignores older erratic data, but sets a strict "coverline" for the jump.
+    const pre1 = validEntries[i - 3].temp;
+    const pre2 = validEntries[i - 2].temp;
+    const pre3 = validEntries[i - 1].temp;
+    const coverline = Math.max(pre1, pre2, pre3);
 
-    // 2. Get the 4 consecutive days
+    // 2. Get the next 3 consecutive days
     const day1 = validEntries[i].temp;
     const day2 = validEntries[i + 1].temp;
     const day3 = validEntries[i + 2].temp;
-    const day4 = validEntries[i + 3].temp;
 
-    // 3. The rule: All 4 days must be distinctly higher than the average of the 2 preceding days
-    if (day1 > baselineAvg && day2 > baselineAvg && day3 > baselineAvg && day4 > baselineAvg) {
+    // 3. The Clinical Rule: All 3 days must be strictly higher than the coverline
+    if (day1 > coverline && day2 > coverline && day3 > coverline) {
       
-      // Also ensure the jump started specifically after the last low day
-      if (day1 > pre2) {
-        return validEntries[i - 1].date;
-      }
+      // Lock ovulation to the last low day (the day right before the shift)
+      return validEntries[i - 1].date;
     }
   }
 
