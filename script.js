@@ -138,18 +138,16 @@ window.clearData       = clearData;
 
 // ── CYCLE ANALYSIS HELPERS ────────────────────────────────────────────────────
 function detectOvulation() {
-  // 1. Filter out days where no temperature was logged
+  // 1. Filter to days with a logged temperature
   const validEntries = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
 
-  // Need at least 6 low days + 3 high days to run the math
+  // Need at least 6 low days + 3 high days
   if (validEntries.length < 9) return null;
 
-  let confirmedOvulationDate = null;
-
-  // 2. Search FORWARD to catch the exact start of your 4-day spike
+  // 2. Search forward — stop at the FIRST confirmed biphasic shift (no overwriting)
   for (let i = 6; i <= validEntries.length - 3; i++) {
-    
-    // 3. Simple Average Baseline (No dropping highest temps)
+
+    // 3. Baseline = average of 6 days before the candidate rise
     const prev6 = validEntries.slice(i - 6, i).map(e => e.temp);
     const baseline = prev6.reduce((sum, val) => sum + val, 0) / 6;
 
@@ -157,15 +155,26 @@ function detectOvulation() {
     const t2 = validEntries[i + 1].temp;
     const t3 = validEntries[i + 2].temp;
 
-    // 4. The Shift: 3 days above the average baseline
+    // 4. Confirmed shift: all 3 days above baseline, 3rd at least +0.15
     if (t1 > baseline && t2 > baseline && t3 >= baseline + 0.15) {
-      
-      // Ovulation happens the day before the spike starts
-      confirmedOvulationDate = validEntries[i - 1].date;
+
+      // 5. Refine with mucus: look for the last egg-white day in the
+      //    4 days before the temperature rise — that is the most accurate
+      //    ovulation marker. Fall back to the last low-temp day (i-1).
+      const riseDate = new Date(validEntries[i].date);
+      const windowStart = new Date(riseDate.getTime() - 4 * 86400000);
+
+      const mucusPeak = cycleData
+        .filter(e => e.cm === 'egg-white')
+        .filter(e => { const d = new Date(e.date); return d >= windowStart && d < riseDate; })
+        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+      // Return immediately — do not let later noise re-trigger the shift
+      return mucusPeak ? mucusPeak.date : validEntries[i - 1].date;
     }
   }
 
-  return confirmedOvulationDate;
+  return null;
 }
 
 function detectPeriods() {
