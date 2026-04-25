@@ -170,6 +170,8 @@ function getCssVar(name) { return getComputedStyle(document.documentElement).get
 function getChartDataStructure() {
   const ctx = getCycleContext();
   const allOv = ctx.allOvDays;
+  
+  // These lines grab your CSS variables so you only ever have to edit style.css
   const colPeriod = getCssVar('--period-col');
   const colOvulation = getCssVar('--ovulation');
   const colMigraine = getCssVar('--migraine');
@@ -182,7 +184,12 @@ function getChartDataStructure() {
     datasets: [{
       label: 'BBT',
       data: cycleData.map(e => e.temp),
-      borderColor: 'rgba(255,255,255,0.35)', borderWidth: 2, tension: 0.35, spanGaps: true,
+      borderColor: 'rgba(255,255,255,0.35)', 
+      borderWidth: 2, 
+      tension: 0.35, 
+      spanGaps: true,
+      
+      // Fills circles, squares, and period dots
       pointBackgroundColor: cycleData.map(e => {
         if (e.flow || (typeof e.flow === 'string' && e.flow)) return colPeriod;
         if (allOv.includes(e.date)) return colOvulation;
@@ -192,7 +199,18 @@ function getChartDataStructure() {
         if (ph === 'fertile') return colFertile;
         return colFollicular;
       }),
-      pointRadius: cycleData.map(e => allOv.includes(e.date) ? 7 : (e.symptoms?.includes('migraine') ? 6 : 5)),
+
+      // REQUIRED: Stars only use BorderColor. 
+      // We set others to transparent to remove the unwanted borders you saw.
+      pointBorderColor: cycleData.map(e => {
+        if (allOv.includes(e.date)) return colOvulation; 
+        return 'transparent'; 
+      }),
+
+      // Only the star needs a "border" (the lines of the star)
+      pointBorderWidth: cycleData.map(e => allOv.includes(e.date) ? 2 : 0), 
+      
+      pointRadius: cycleData.map(e => allOv.includes(e.date) ? 8 : (e.symptoms?.includes('migraine') ? 6 : 5)),
       pointStyle: cycleData.map(e => e.symptoms?.includes('migraine') ? 'rectRot' : (allOv.includes(e.date) ? 'star' : 'circle'))
     }]
   };
@@ -245,4 +263,21 @@ function calculateInsights() {
     document.getElementById('ov-prediction').textContent = 'Watching for biphasic shift.';
     document.getElementById('next-ovulation').textContent = ctx.ovWinStart ? `Est. ${fmt(ctx.ovWinStart)} – ${fmt(ctx.ovWinEnd)}` : '--';
     document.getElementById('next-fertile').textContent = ctx.fertileStart ? `${fmt(ctx.fertileStart)} – ${fmt(ctx.ovWinEnd)}` : '--';
-    document.getElementById('next-period').textContent = ctx.predictedPeriod ? `Est. ${fmt(ctx.
+    document.getElementById('next-period').textContent = ctx.predictedPeriod ? `Est. ${fmt(ctx.predictedPeriod)}` : '--';
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  document.getElementById('date-temp').valueAsDate = new Date();
+  document.getElementById('date-sx').valueAsDate = new Date();
+  initializeChart();
+  if (cycleData.length > 0) { 
+    updateChartData(); 
+    calculateInsights(); 
+  }
+};
+
+// Global Exposure for HTML Buttons
+window.addTempData = addTempData; 
+window.addSymptomsData = addSymptomsData;
