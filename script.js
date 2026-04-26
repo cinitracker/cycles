@@ -273,7 +273,38 @@ function initializeChart() {
       },
       plugins: { 
         legend: { display: false }, 
-        zoom: { pan: { enabled: true, mode: 'x' }, zoom: { pinch: { enabled: true }, mode: 'x' } } 
+        zoom: { pan: { enabled: true, mode: 'x' }, zoom: { pinch: { enabled: true }, mode: 'x' } },
+        tooltip: {
+          callbacks: {
+            title(items) {
+              const idx = items[0].dataIndex;
+              return cycleData[idx]?.date || items[0].label;
+            },
+            label(item) {
+              const e = cycleData[item.dataIndex];
+              if (!e) return '';
+              const lines = [];
+              if (e.temp != null) lines.push('🌡 ' + e.temp + ' °C');
+              if (e.cm)           lines.push('💧 CM: ' + e.cm);
+              if (e.symptoms) {
+                const tags = e.symptoms.split(',').map(s => s.trim()).filter(Boolean);
+                const labels = {
+                  'migraine': '🤯 Migraine',
+                  'bloating': '🫃 Bloating',
+                  'breast-tenderness': '🎯 Breast tenderness'
+                };
+                tags.filter(t => t !== 'ovulation-manual').forEach(t => lines.push(labels[t] || ('• ' + t)));
+              }
+              return lines;
+            }
+          },
+          backgroundColor: 'rgba(30,20,40,0.92)',
+          titleColor: 'rgba(255,255,255,0.9)',
+          bodyColor: 'rgba(255,255,255,0.75)',
+          padding: 10,
+          cornerRadius: 8,
+          displayColors: false
+        }
       }
     }
   });
