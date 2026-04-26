@@ -74,14 +74,32 @@ function detectOvulation() {
       allOvDays.push(e.date);
     }
   });
-  // 2. Math (3 over 3 Rule)
+  // 2. Math – strict biphasic shift rule
+  //    baseline = avg of 6 low-phase days before the candidate shift
+  //    post-shift: all 3 temps must be >= baseline + 0.1 °C
+  //    pre-shift: highest of the 3 days immediately before must be < baseline + 0.05 °C
+  //      (prevents false positives when temps are already drifting up)
+  //    One ovulation per calendar month is kept (earliest detected wins)
   const valid = cycleData.filter(e => typeof e.temp === 'number' && !isNaN(e.temp));
-  for (let i = 3; i <= valid.length - 3; i++) {
-    const baseline = Math.max(valid[i-3].temp, valid[i-2].temp, valid[i-1].temp);
-    if (valid[i].temp > baseline && valid[i+1].temp > baseline && valid[i+2].temp > baseline) {
-      const d = valid[i-1].date;
-      if (!allOvDays.includes(d)) allOvDays.push(d);
+  const detectedByMonth = {};
+  for (let i = 6; i <= valid.length - 3; i++) {
+    const baselineDays = [valid[i-6].temp, valid[i-5].temp, valid[i-4].temp,
+                          valid[i-3].temp, valid[i-2].temp, valid[i-1].temp];
+    const baseline = baselineDays.reduce((a, b) => a + b, 0) / 6;
+    const SHIFT = 0.1;
+    const DRIFT = 0.05;
+    const preShiftHighest = Math.max(valid[i-3].temp, valid[i-2].temp, valid[i-1].temp);
+    const postShiftLowest  = Math.min(valid[i].temp, valid[i+1].temp, valid[i+2].temp);
+    const clearShift     = postShiftLowest >= baseline + SHIFT;
+    const stableBaseline = preShiftHighest < baseline + DRIFT;
+    if (clearShift && stableBaseline) {
+      const ovDate = valid[i-1].date;
+      const monthKey = ovDate.slice(0, 7);
+      if (!detectedByMonth[monthKey]) detectedByMonth[monthKey] = ovDate;
     }
+  }
+  for (const date of Object.values(detectedByMonth)) {
+    if (!allOvDays.includes(date)) allOvDays.push(date);
   }
   return allOvDays;
 }
@@ -141,7 +159,7 @@ function getCycleContext() {
 
 function getPhaseForDate(dateStr, ctx) {
   const d = new Date(dateStr);
-  // 1. Check if the date is within a period
+  // 1. Period takes priority
   for (const p of ctx.periods) {
     if (d >= new Date(p.start) && d <= new Date(p.end)) return 'period';
   }
@@ -161,6 +179,22 @@ function getPhaseForDate(dateStr, ctx) {
     const fStart = new Date(+ovD - 5 * 86400000);
     if (d >= fStart && d < ovD) return 'fertile';
   }
+
+  // 3. No confirmed ovulation yet this cycle – check predicted fertile window
+  //    Also flag days with fertile-quality mucus (egg-white / watery) as fertile
+  if (!ctx.isOvThisCycle && ctx.fertileStart && ctx.ovWinEnd) {
+    if (d >= ctx.fertileStart && d <= ctx.ovWinEnd) return 'fertile';
+  }
+
+  // 4. Mucus-based fertile signal even outside the predicted window
+  //    (handles cases where ovulation is early/late)
+  const entry = cycleData.find(e => e.date === dateStr);
+  if (entry) {
+    const cm = (entry.cm || '').toLowerCase();
+    const isFertileMucus = cm.includes('egg') || cm.includes('watery') || cm.includes('stretchy') || cm.includes('ewcm');
+    if (isFertileMucus) return 'fertile';
+  }
+
   return 'follicular';
 }
 
