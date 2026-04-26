@@ -343,6 +343,49 @@ window.onload = () => {
   }
 };
 
+// ── DATA MANAGEMENT ───────────────────────────────────────────────────────────
+function exportData() {
+  const json = JSON.stringify(cycleData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cycle-data-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const entries = JSON.parse(text);
+    if (!Array.isArray(entries)) return alert('Invalid file format.');
+    const batch = writeBatch(db);
+    entries.forEach(e => {
+      if (!e.date) return;
+      batch.set(doc(db, 'cycle_entries', e.date), e);
+    });
+    await batch.commit();
+    alert(`Imported ${entries.length} entries.`);
+  } catch (err) {
+    alert('Import failed: ' + err.message);
+  }
+  event.target.value = '';
+}
+
+async function clearData() {
+  if (!confirm('Delete all data? This cannot be undone.')) return;
+  const snapshot = await getDocs(entriesCol);
+  const batch = writeBatch(db);
+  snapshot.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+}
+
 // Global Exposure for HTML Buttons
-window.addTempData = addTempData; 
+window.addTempData = addTempData;
 window.addSymptomsData = addSymptomsData;
+window.exportData = exportData;
+window.importData = importData;
+window.clearData = clearData;
